@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="notranslate">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="google" content="notranslate" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>تعلّم الحروف العربية</title>
+  <style>
+    :root {
+      --bg: #F5F3FF;
+      --primary: #4F46E5;
+      --primary-dark: #3730A3;
+      --primary-light: #6366F1;
+      --border: #C7D2FE;
+      --text: #1E1B4B;
+      --ok: #22C55E;
+      --bad: #EF4444;
+      --gold: #F59E0B;
+      --hilite: #FEF9C3;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .app { width: 100%; max-width: 520px; padding-bottom: 24px; }
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .title { font-size: 1.15rem; font-weight: 800; }
+    .chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      background: var(--primary-light);
+      padding: 4px 9px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+    .icon-btn {
+      background: var(--primary-dark);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .levels {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      padding: 12px 14px 8px;
+    }
+    .lvl-btn {
+      background: #E0E7FF;
+      color: var(--primary-dark);
+      border: 2px solid #E0E7FF;
+      border-radius: 12px;
+      padding: 8px 4px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .lvl-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      margin: 4px 14px 0;
+      padding: 14px;
+      text-align: center;
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.07);
+    }
+    .stage {
+      min-height: 170px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .emoji-big { font-size: 4.4rem; line-height: 1.1; }
+    .char-big { font-size: 5rem; font-weight: 800; color: var(--text); line-height: 1.1; }
+    .word-txt { font-size: 2rem; font-weight: 800; color: var(--primary); }
+    .qrow { display: flex; justify-content: center; gap: 10px; margin-top: 8px; }
+    .q-btn {
+      background: #FEF3C7;
+      border: 2px solid #FCD34D;
+      border-radius: 14px;
+      padding: 8px 18px;
+      font-size: 1.4rem;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .listen-btn {
+      background: #DCFCE7;
+      border: 2px solid #86EFAC;
+      border-radius: 14px;
+      padding: 8px 14px;
+      font-size: 1.4rem;
+      cursor: pointer;
+    }
+    .hint { font-size: 0.85rem; color: #6B7280; margin-top: 6px; min-height: 18px; }
+    .msg {
+      text-align: center;
+      font-size: 1.25rem;
+      font-weight: 800;
+      min-height: 32px;
+      margin: 10px 14px 4px;
+    }
+    .prog-wrap {
+      width: 280px;
+      max-width: 80%;
+      height: 10px;
+      background: #DDD6FE;
+      border-radius: 999px;
+      margin: 0 auto 14px;
+      overflow: hidden;
+    }
+    .prog-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--gold);
+      transition: width 0.25s ease;
+    }
+    .options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      padding: 0 14px;
+    }
+    .opt-btn {
+      background: #fff;
+      color: var(--primary-dark);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 6px;
+      font-size: 1.8rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s, background 0.15s;
+    }
+    .opt-btn.text-opt { font-size: 1.25rem; }
+    .opt-btn:active { transform: scale(0.97); }
+    .opt-btn.hilite { background: var(--hilite); color: var(--text); border-color: var(--gold); }
+    .opt-btn.ok { background: var(--ok); color: #fff; border-color: var(--ok); }
+    .opt-btn.bad { background: var(--bad); color: #fff; border-color: var(--bad); }
+  </style>
+</head>
+<body class="notranslate">
+  <div class="app">
+    <header>
+      <div class="title">🔤 تعلّم الحروف</div>
+      <div class="chips">
+        <span class="chip" id="scoreChip">⭐ 0</span>
+        <span class="chip" id="streakChip">🔥 0</span>
+        <span class="chip" id="starsChip">🏅 0</span>
+        <button class="icon-btn" id="soundBtn" onclick="toggleSound()">🔊</button>
+      </div>
+    </header>
+
+    <div class="levels">
+      <button class="lvl-btn active" data-lvl="1" onclick="selectLevel(1)">١ مع الكلمة</button>
+      <button class="lvl-btn" data-lvl="2" onclick="selectLevel(2)">٢ بدون كلمة</button>
+      <button class="lvl-btn" data-lvl="3" onclick="selectLevel(3)">٣ موقع الحرف</button>
+      <button class="lvl-btn" data-lvl="4" onclick="selectLevel(4)">٤ الحركات</button>
+    </div>
+
+    <div class="card">
+      <div class="stage" id="stage"></div>
+      <div class="qrow">
+        <button class="q-btn" id="qBtn" onclick="speakSequence()">❓🔤</button>
+        <button class="listen-btn" onclick="speakTarget()">🔈</button>
+      </div>
+      <div class="hint" id="hint"></div>
+    </div>
+
+    <div class="msg" id="msg"></div>
+    <div class="prog-wrap"><div class="prog-bar" id="progBar"></div></div>
+    <div class="options" id="options"></div>
+  </div>
+
+  <script>
+    const DATA = [
+      ["أ", "أسد", "🦁", "ألف"], ["ب", "بطة", "🦆", "باء"],
+      ["ت", "تفاحة", "🍎", "تاء"], ["ث", "ثعلب", "🦊", "ثاء"],
+      ["ج", "جمل", "🐪", "جيم"], ["ح", "حصان", "🐴", "حاء"],
+      ["خ", "خروف", "🐑", "خاء"], ["د", "دجاجة", "🐔", "دال"],
+      ["ذ", "ذرة", "🌽", "ذال"], ["ر", "رمان", "🍎", "راء"],
+      ["ز", "زرافة", "🦒", "زاي"], ["س", "سمكة", "🐟", "سين"],
+      ["ش", "شمس", "☀️", "شين"], ["ص", "صاروخ", "🚀", "صاد"],
+      ["ض", "ضفدع", "🐸", "ضاد"], ["ط", "طائرة", "✈️", "طاء"],
+      ["ظ", "ظرف", "✉️", "ظاء"], ["ع", "عنب", "🍇", "عين"],
+      ["غ", "غيمة", "☁️", "غين"], ["ف", "فيل", "🐘", "فاء"],
+      ["ق", "قمر", "🌙", "قاف"], ["ك", "كلب", "🐶", "كاف"],
+      ["ل", "ليمون", "🍋", "لام"], ["م", "موز", "🍌", "ميم"],
+      ["ن", "نحلة", "🐝", "نون"], ["ه", "هدية", "🎁", "هاء"],
+      ["و", "وردة", "🌹", "واو"], ["ي", "يد", "✋", "ياء"]
+    ];
+    const ALL_LETTERS = new Set(DATA.map(d => d[0]));
+    const HARAKAT = [["َ", "فتحة"], ["ُ", "ضمة"], ["ِ", "كسرة"]];
+    const POSITIONS = ["أول", "وسط", "آخر"];
+    const PRAISE = ["أحسنت!", "ممتاز!", "رائع!", "برافو!", "عظيم!"];
+
+    let level = 1, score = 0, streak = 0, stars = 0, soundOn = true, locked = false;
+    let current = null, playToken = 0, nextTimer = null;
+
+    let audioCtx = null;
+    function getAudioCtx() {
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) audioCtx = new Ctx();
+      }
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume().catch(() => {});
+      }
+      return audioCtx;
+    }
+
+    function beep(freq, ms) {
+      if (!soundOn) return;
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = freq;
+        gain.gain.value = 0.14;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        setTimeout(() => { try { osc.stop(); } catch (_) {} }, ms);
+      } catch (_) {}
+    }
+
+    function playNotes(notes) {
+      let delay = 0;
+      for (const [f, d] of notes) {
+        setTimeout(() => beep(f, d), delay);
+        delay += d + 25;
+      }
+    }
+
+    function pickArabicVoice() {
+      if (!("speechSynthesis" in window)) return null;
+      const voices = window.speechSynthesis.getVoices() || [];
+      return (
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ar-sa")) ||
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ar")) ||
+        null
+      );
+    }
+
+    if ("speechSynthesis" in window && typeof window.speechSynthesis.onvoiceschanged !== "undefined") {
+      window.speechSynthesis.onvoiceschanged = () => pickArabicVoice();
+    }
+
+    function toggleSound() {
+      soundOn = !soundOn;
+      document.getElementById("soundBtn").textContent = soundOn ? "🔊" : "🔇";
+      if (!soundOn) {
+        playToken++;
+        if ("speechSynthesis" in window) {
+          try { window.speechSynthesis.cancel(); } catch (_) {}
+        }
+        clearHilite();
+      } else {
+        getAudioCtx();
+        beep(520, 90);
+      }
+    }
+
+    function selectLevel(lvl) {
+      clearTimeout(nextTimer);
+      level = lvl;
+      document.querySelectorAll(".lvl-btn").forEach(b => {
+        b.classList.toggle("active", Number(b.dataset.lvl) === lvl);
+      });
+      loadQuestion();
+    }
+
+    function updateStats(full = false) {
+      document.getElementById("scoreChip").textContent = `⭐ ${score}`;
+      document.getElementById("streakChip").textContent = `🔥 ${streak}`;
+      document.getElementById("starsChip").textContent = `🏅 ${stars}`;
+      const pct = full ? 100 : ((score % 5) / 5) * 100;
+      document.getElementById("progBar").style.width = `${pct}%`;
+    }
+
+    function clearHilite() {
+      document.querySelectorAll(".opt-btn.hilite").forEach(b => b.classList.remove("hilite"));
+    }
+
+    function sayText(text, token) {
+      return new Promise(resolve => {
+        if (!soundOn || token !== playToken || !text || !("speechSynthesis" in window)) {
+          return resolve();
+        }
+        try {
+          const u = new SpeechSynthesisUtterance(text);
+          const arVoice = pickArabicVoice();
+          if (arVoice) u.voice = arVoice;
+          u.lang = arVoice ? arVoice.lang : "ar-SA";
+          u.rate = 0.9;
+          let done = false;
+          const finish = () => {
+            if (!done) {
+              done = true;
+              clearTimeout(guard);
+              resolve();
+            }
+          };
+          const guard = setTimeout(finish, 2600);
+          u.onend = finish;
+          u.onerror = finish;
+          window.speechSynthesis.speak(u);
+        } catch (_) {
+          resolve();
+        }
+      });
+    }
+
+    async function speakSequence() {
+      if (!current || !soundOn) return;
+      getAudioCtx();
+      playToken++;
+      const tok = playToken;
+      if ("speechSynthesis" in window) {
+        try { window.speechSynthesis.cancel(); } catch (_) {}
+      }
+      clearHilite();
+
+      for (const txt of current.speechTexts) {
+        if (tok !== playToken) return;
+        await sayText(txt, tok);
+      }
+      const optBtns = [...document.querySelectorAll(".opt-btn")];
+      for (let i = 0; i < current.options.length; i++) {
+        if (tok !== playToken) return;
+        const opt = current.options[i];
+        const spoken = current.optSpeeches[opt];
+        const btn = optBtns[i];
+        if (spoken) {
+          clearHilite();
+          if (btn) btn.classList.add("hilite");
+          await sayText(spoken, tok);
+        }
+      }
+      clearHilite();
+    }
+
+    function speakTarget() {
+      if (!current || !soundOn) return;
+      getAudioCtx();
+      playToken++;
+      if ("speechSynthesis" in window) {
+        try { window.speechSynthesis.cancel(); } catch (_) {}
+      }
+      clearHilite();
+      sayText(current.targetText, playToken);
+    }
+
+    function shuffle(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function buildQuestion(lvl) {
+      if (lvl === 1 || lvl === 2) {
+        const idx = Math.floor(Math.random() * DATA.length);
+        const [letter, word, emoji] = DATA[idx];
+        const pool = DATA.filter(d => d[0] !== letter);
+        const wrongs = shuffle(pool).slice(0, 2).map(d => d[0]);
+        const options = shuffle([letter, ...wrongs]);
+        const optSpeeches = {};
+        for (const o of options) {
+          const found = DATA.find(d => d[0] === o);
+          optSpeeches[o] = found ? found[3] : o;
+        }
+        return {
+          icon: "❓🔤",
+          hint: "بأي حرف تبدأ هذه الكلمة؟",
+          emoji,
+          word: lvl === 1 ? word : "؟",
+          bigChar: "",
+          options,
+          correct: letter,
+          optSpeeches,
+          speechTexts: lvl === 1 ? ["بأي حرف تبدأ هذه الكلمة؟", word] : ["بأي حرف تبدأ هذه الكلمة؟"],
+          targetText: word
+        };
+      }
+
+      if (lvl === 3) {
+        let word = "", emoji = "", cands = [];
+        for (let tries = 0; tries < 50; tries++) {
+          const idx = Math.floor(Math.random() * DATA.length);
+          [, word, emoji] = DATA[idx];
+          cands = [...word].filter(c => ALL_LETTERS.has(c) && word.split(c).length - 1 === 1);
+          if (cands.length) break;
+        }
+        const c = cands[Math.floor(Math.random() * cands.length)];
+        const posIdx = word.indexOf(c);
+        const correct = posIdx === 0 ? POSITIONS[0] : (posIdx === word.length - 1 ? POSITIONS[2] : POSITIONS[1]);
+        const letterInfo = DATA.find(d => d[0] === c);
+        const letterName = letterInfo ? letterInfo[3] : c;
+        const optSpeeches = { "أول": "أول", "وسط": "وسط", "آخر": "آخر" };
+        return {
+          icon: `📍 ${c}`,
+          hint: `أين موقع حرف "${c}" في الكلمة؟`,
+          emoji,
+          word,
+          bigChar: "",
+          options: [...POSITIONS],
+          correct,
+          optSpeeches,
+          speechTexts: [`أين موقع حرف ${letterName} في الكلمة؟`, word],
+          targetText: word
+        };
+      }
+
+      const idx = Math.floor(Math.random() * DATA.length);
+      const letter = DATA[idx][0];
+      const m = Math.floor(Math.random() * 3);
+      const syl = letter + HARAKAT[m][0];
+      const optSpeeches = { "فتحة": "فتحة", "ضمة": "ضمة", "كسرة": "كسرة" };
+      return {
+        icon: "✨❓",
+        hint: "ما اسم هذه الحركة؟",
+        emoji: "",
+        word: "",
+        bigChar: syl,
+        options: HARAKAT.map(h => h[1]),
+        correct: HARAKAT[m][1],
+        optSpeeches,
+        speechTexts: ["ما اسم هذه الحركة؟", syl],
+        targetText: syl
+      };
+    }
+
+    function loadQuestion() {
+      clearTimeout(nextTimer);
+      locked = false;
+      playToken++;
+      if ("speechSynthesis" in window) {
+        try { window.speechSynthesis.cancel(); } catch (_) {}
+      }
+      clearHilite();
+      document.getElementById("msg").textContent = "";
+      updateStats(false);
+
+      current = buildQuestion(level);
+      document.getElementById("qBtn").textContent = current.icon;
+      document.getElementById("hint").textContent = current.hint;
+
+      const stage = document.getElementById("stage");
+      stage.innerHTML = "";
+      if (current.bigChar) {
+        const d = document.createElement("div");
+        d.className = "char-big";
+        d.textContent = current.bigChar;
+        stage.appendChild(d);
+      } else {
+        const em = document.createElement("div");
+        em.className = "emoji-big";
+        em.textContent = current.emoji;
+        stage.appendChild(em);
+        if (current.word) {
+          const w = document.createElement("div");
+          w.className = "word-txt";
+          w.textContent = current.word;
+          stage.appendChild(w);
+        }
+      }
+
+      const optsDiv = document.getElementById("options");
+      optsDiv.innerHTML = "";
+      const isTextOpt = (level === 3 || level === 4);
+      current.options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.className = "opt-btn" + (isTextOpt ? " text-opt" : "");
+        btn.textContent = opt;
+        btn.onclick = () => onAnswer(opt, btn);
+        optsDiv.appendChild(btn);
+      });
+    }
+
+    async function onAnswer(choice, btn) {
+      if (locked || !current) return;
+      getAudioCtx();
+      playToken++;
+      const tok = playToken;
+      if ("speechSynthesis" in window) {
+        try { window.speechSynthesis.cancel(); } catch (_) {}
+      }
+      clearHilite();
+
+      const spoken = current.optSpeeches[choice];
+      if (spoken) await sayText(spoken, tok);
+      if (tok !== playToken) return;
+
+      const msgEl = document.getElementById("msg");
+      if (choice === current.correct) {
+        locked = true;
+        score += 1;
+        streak += 1;
+        btn.classList.add("ok");
+
+        if (score % 5 === 0) {
+          stars += 1;
+          updateStats(true);
+          msgEl.style.color = "var(--gold)";
+          msgEl.textContent = "نجمة جديدة! 🌟👏";
+          playNotes([[523,120],[659,120],[784,120],[1047,300]]);
+        } else {
+          updateStats(false);
+          const pText = PRAISE[Math.floor(Math.random() * PRAISE.length)];
+          msgEl.style.color = "var(--ok)";
+          msgEl.textContent = `${pText} 🎉`;
+          playNotes([[660,120],[880,120],[1320,200]]);
+        }
+
+        setTimeout(() => {
+          if (current && tok === playToken) sayText(current.targetText, tok);
+        }, 700);
+        nextTimer = setTimeout(() => loadQuestion(), 2300);
+      } else {
+        streak = 0;
+        updateStats(false);
+        btn.classList.add("bad");
+        msgEl.style.color = "var(--bad)";
+        msgEl.textContent = "حاول مرة ثانية 💪";
+        playNotes([[300, 250]]);
+      }
+    }
+
+    loadQuestion();
+  </script>
+</body>
+</html>
