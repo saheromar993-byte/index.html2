@@ -18,7 +18,6 @@
       --bad: #EF4444;
       --warn: #D97706;
       --gold: #F59E0B;
-      --hilite: #FEF9C3;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
@@ -189,7 +188,7 @@
       gap: 8px;
     }
     .emoji-big { font-size: 4.6rem; line-height: 1.1; transition: transform 0.25s; }
-    .emoji-big.win-bounce { animation: winBounce 0.75s ease infinite alternate; }
+    .emoji-big.win-bounce { animation: winBounce 0.7s ease infinite alternate; }
     @keyframes winBounce {
       0% { transform: scale(1) rotate(-4deg); }
       100% { transform: scale(1.18) rotate(4deg); }
@@ -300,7 +299,6 @@
     }
     .opt-btn.text-opt { font-size: 1.2rem; }
     .opt-btn:active { transform: scale(0.97); }
-    .opt-btn.hilite { background: var(--hilite); color: var(--text); border-color: var(--gold); }
     .opt-btn.ok { background: var(--ok); color: #fff; border-color: var(--ok); }
     .opt-btn.bad { background: var(--bad); color: #fff; border-color: var(--bad); }
   </style>
@@ -342,8 +340,8 @@
       <div class="card" id="mainCard">
         <div class="stage" id="stage"></div>
         <div class="qrow">
-          <button class="q-btn" id="qBtn" onclick="speakSequence()">❓🔤</button>
-          <button class="listen-btn" onclick="speakTarget()">🔈</button>
+          <button class="q-btn" id="qBtn" onclick="playSoftTone(523, 110)">❓🔤</button>
+          <button class="listen-btn" onclick="speakWordGentle()">🔈</button>
         </div>
         <div class="hint" id="hint"></div>
       </div>
@@ -360,20 +358,16 @@
     const QUESTION_SECONDS = 15;
 
     const DATA = [
-      ["أ", "أسد", "🦁", "ألف"], ["ب", "بطة", "🦆", "باء"],
-      ["ت", "تفاحة", "🍎", "تاء"], ["ث", "ثعلب", "🦊", "ثاء"],
-      ["ج", "جمل", "🐪", "جيم"], ["ح", "حصان", "🐴", "حاء"],
-      ["خ", "خروف", "🐑", "خاء"], ["د", "دجاجة", "🐔", "دال"],
-      ["ذ", "ذرة", "🌽", "ذال"], ["ر", "رمان", "🍎", "راء"],
-      ["ز", "زرافة", "🦒", "زاي"], ["س", "سمكة", "🐟", "سين"],
-      ["ش", "شمس", "☀️", "شين"], ["ص", "صاروخ", "🚀", "صاد"],
-      ["ض", "ضفدع", "🐸", "ضاد"], ["ط", "طائرة", "✈️", "طاء"],
-      ["ظ", "ظرف", "✉️", "ظاء"], ["ع", "عنب", "🍇", "عين"],
-      ["غ", "غيمة", "☁️", "غين"], ["ف", "فيل", "🐘", "فاء"],
-      ["ق", "قمر", "🌙", "قاف"], ["ك", "كلب", "🐶", "كاف"],
-      ["ل", "ليمون", "🍋", "لام"], ["م", "موز", "🍌", "ميم"],
-      ["ن", "نحلة", "🐝", "نون"], ["ه", "هدية", "🎁", "هاء"],
-      ["و", "وردة", "🌹", "واو"], ["ي", "يد", "✋", "ياء"]
+      ["أ", "أسد", "🦁"], ["ب", "بطة", "🦆"], ["ت", "تفاحة", "🍎"],
+      ["ث", "ثعلب", "🦊"], ["ج", "جمل", "🐪"], ["ح", "حصان", "🐴"],
+      ["خ", "خروف", "🐑"], ["د", "دجاجة", "🐔"], ["ذ", "ذرة", "🌽"],
+      ["ر", "رمان", "🍎"], ["ز", "زرافة", "🦒"], ["س", "سمكة", "🐟"],
+      ["ش", "شمس", "☀️"], ["ص", "صاروخ", "🚀"], ["ض", "ضفدع", "🐸"],
+      ["ط", "طائرة", "✈️"], ["ظ", "ظرف", "✉️"], ["ع", "عنب", "🍇"],
+      ["غ", "غيمة", "☁️"], ["ف", "فيل", "🐘"], ["ق", "قمر", "🌙"],
+      ["ك", "كلب", "🐶"], ["ل", "ليمون", "🍋"], ["م", "موز", "🍌"],
+      ["ن", "نحلة", "🐝"], ["ه", "هدية", "🎁"], ["و", "وردة", "🌹"],
+      ["ي", "يد", "✋"]
     ];
     const ALL_LETTERS = new Set(DATA.map(d => d[0]));
     const POSITIONS = ["أول", "وسط", "آخر"];
@@ -389,9 +383,8 @@
     let locked = false;
     let timeLeft = QUESTION_SECONDS;
     let current = null;
-    let playToken = 0;
+    let recentKeys = [];
     let nextTimer = null;
-    let speakTimer = null;
     let countdownId = null;
 
     let audioCtx = null;
@@ -406,102 +399,99 @@
       return audioCtx;
     }
 
-    function beep(freq, ms, vol = 0.12) {
+    // نغمة موسيقية هادئة وناعمة
+    function playSoftTone(freq, ms, vol = 0.09) {
       if (!soundOn) return;
       const ctx = getAudioCtx();
       if (!ctx) return;
       try {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = "sine";
+        osc.type = "triangle";
         osc.frequency.value = freq;
-        gain.gain.value = vol;
+        const now = ctx.currentTime;
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(vol, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + ms / 1000);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start();
-        setTimeout(() => { try { osc.stop(); } catch (_) {} }, ms);
+        osc.start(now);
+        osc.stop(now + ms / 1000 + 0.02);
       } catch (_) {}
     }
 
-    function playNotes(notes) {
+    function playMelody(notes) {
       let delay = 0;
       for (const [f, d] of notes) {
-        setTimeout(() => beep(f, d), delay);
-        delay += d + 25;
+        setTimeout(() => playSoftTone(f, d, 0.1), delay);
+        delay += d + 35;
       }
     }
 
-    // تصفيق لطيف وإيقاعي بدون خشخشة
-    function playCheerClap() {
+    // تصفيق موسيقي لطيف بدون خشخشة
+    function playGentleClap() {
       if (!soundOn) return;
       const ctx = getAudioCtx();
       if (!ctx) return;
-      const beats = [0, 140, 280, 420, 560];
+      const beats = [0, 145, 290, 445];
       beats.forEach((delay, idx) => {
         setTimeout(() => {
           try {
-            const len = Math.floor(ctx.sampleRate * 0.08);
+            const len = Math.floor(ctx.sampleRate * 0.055);
             const buf = ctx.createBuffer(1, len, ctx.sampleRate);
             const ch = buf.getChannelData(0);
             for (let i = 0; i < len; i++) {
-              const env = Math.pow(1 - i / len, 2.2);
-              ch[i] = (Math.random() * 2 - 1) * env * 0.45;
+              const env = Math.pow(1 - i / len, 3);
+              ch[i] = (Math.random() * 2 - 1) * env * 0.25;
             }
             const src = ctx.createBufferSource();
             src.buffer = buf;
 
-            const lp = ctx.createBiquadFilter();
-            lp.type = "lowpass";
-            lp.frequency.value = 1350;
+            const bp = ctx.createBiquadFilter();
+            bp.type = "bandpass";
+            bp.frequency.value = 1100;
+            bp.Q.value = 1.2;
 
             const gain = ctx.createGain();
-            gain.gain.value = idx === beats.length - 1 ? 0.5 : 0.35;
+            gain.gain.value = idx === beats.length - 1 ? 0.35 : 0.22;
 
-            src.connect(lp);
-            lp.connect(gain);
+            src.connect(bp);
+            bp.connect(gain);
             gain.connect(ctx.destination);
             src.start();
           } catch (_) {}
         }, delay);
       });
 
-      // نغمة تشجيع ناعمة ورا التصفيق
       setTimeout(() => {
-        playNotes([[587, 110], [784, 140], [988, 200]]);
-      }, 650);
+        playMelody([[523, 110], [659, 120], [784, 180]]);
+      }, 560);
     }
 
-    function pickArabicVoice() {
-      if (!("speechSynthesis" in window)) return null;
-      const voices = window.speechSynthesis.getVoices() || [];
-      return (
-        voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ar-sa")) ||
-        voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ar")) ||
-        null
-      );
-    }
-
-    if ("speechSynthesis" in window && typeof window.speechSynthesis.onvoiceschanged !== "undefined") {
-      window.speechSynthesis.onvoiceschanged = () => pickArabicVoice();
-    }
-
-    function stopSpeechOnly() {
-      clearTimeout(speakTimer);
-      if ("speechSynthesis" in window) {
-        try { window.speechSynthesis.cancel(); } catch (_) {}
-      }
+    // نطق خفيف ومريح فقط عند ضغط زر 🔈
+    function speakWordGentle() {
+      if (!soundOn || !current || !current.targetText || !("speechSynthesis" in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(current.targetText);
+        const voices = window.speechSynthesis.getVoices() || [];
+        const ar = voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ar"));
+        if (ar) u.voice = ar;
+        u.lang = ar ? ar.lang : "ar-SA";
+        u.rate = 0.88;
+        u.pitch = 1.05;
+        window.speechSynthesis.speak(u);
+      } catch (_) {}
     }
 
     function toggleSound() {
       soundOn = !soundOn;
       document.getElementById("soundBtn").textContent = soundOn ? "🔊" : "🔇";
-      if (!soundOn) {
-        playToken++;
-        stopSpeechOnly();
-        clearHilite();
-      } else {
+      if (!soundOn && "speechSynthesis" in window) {
+        try { window.speechSynthesis.cancel(); } catch (_) {}
+      } else if (soundOn) {
         getAudioCtx();
-        if (current) speakSequence();
+        playSoftTone(587, 100);
       }
     }
 
@@ -524,7 +514,9 @@
     function renderStagesScreen() {
       clearInterval(countdownId);
       clearTimeout(nextTimer);
-      stopSpeechOnly();
+      if ("speechSynthesis" in window) {
+        try { window.speechSynthesis.cancel(); } catch (_) {}
+      }
 
       document.getElementById("stagesScreen").classList.remove("hidden");
       document.getElementById("gameScreen").classList.remove("active");
@@ -575,7 +567,7 @@
       document.getElementById("gameScreen").classList.add("active");
       document.getElementById("missionBadge").textContent = `مهمة ${currentMission} من ${TOTAL_MISSIONS}`;
       updateLevelButtonsUI();
-      loadQuestion(true);
+      loadQuestion();
     }
 
     function selectLevel(lvl) {
@@ -583,7 +575,7 @@
       clearInterval(countdownId);
       level = lvl;
       updateLevelButtonsUI();
-      loadQuestion(true);
+      loadQuestion();
     }
 
     function updateStats() {
@@ -608,7 +600,7 @@
         timeLeft -= 1;
         updateTimerUI();
         if (timeLeft <= 5 && timeLeft > 0) {
-          beep(440, 60, 0.08);
+          playSoftTone(440, 50, 0.05);
         }
         if (timeLeft <= 0) {
           clearInterval(countdownId);
@@ -620,91 +612,11 @@
     function onTimeUp() {
       if (locked || !current) return;
       locked = true;
-      playNotes([[280, 170], [220, 220]]);
+      playMelody([[330, 140], [262, 180]]);
       setAlert("warn", `⏰ انتهى الوقت (15 ثانية)! الجواب الصحيح: "${current.correct}"`);
       document.getElementById("msg").style.color = "var(--warn)";
-      document.getElementById("msg").textContent = "نعيد السؤال...";
-      nextTimer = setTimeout(() => loadQuestion(true), 2200);
-    }
-
-    function clearHilite() {
-      document.querySelectorAll(".opt-btn.hilite").forEach(b => b.classList.remove("hilite"));
-    }
-
-    function sleep(ms) {
-      return new Promise(resolve => {
-        speakTimer = setTimeout(resolve, ms);
-      });
-    }
-
-    function sayText(text, token) {
-      return new Promise(resolve => {
-        if (!soundOn || token !== playToken || !text || !("speechSynthesis" in window)) {
-          return resolve();
-        }
-        try {
-          const u = new SpeechSynthesisUtterance(text);
-          const arVoice = pickArabicVoice();
-          if (arVoice) u.voice = arVoice;
-          u.lang = arVoice ? arVoice.lang : "ar-SA";
-          u.rate = 0.92;
-          let done = false;
-          const finish = () => {
-            if (!done) {
-              done = true;
-              clearTimeout(guard);
-              resolve();
-            }
-          };
-          const guard = setTimeout(finish, 2600);
-          u.onend = finish;
-          u.onerror = finish;
-          window.speechSynthesis.speak(u);
-        } catch (_) {
-          resolve();
-        }
-      });
-    }
-
-    async function speakSequence() {
-      if (!current || !soundOn) return;
-      getAudioCtx();
-      playToken++;
-      const tok = playToken;
-      stopSpeechOnly();
-      clearHilite();
-
-      for (const txt of current.speechTexts) {
-        if (tok !== playToken) return;
-        await sayText(txt, tok);
-        if (tok !== playToken) return;
-        await sleep(140);
-      }
-
-      const optBtns = [...document.querySelectorAll(".opt-btn")];
-      for (let i = 0; i < current.options.length; i++) {
-        if (tok !== playToken) return;
-        const opt = current.options[i];
-        const spoken = current.optSpeeches[opt];
-        const btn = optBtns[i];
-        if (spoken) {
-          clearHilite();
-          if (btn) btn.classList.add("hilite");
-          await sayText(spoken, tok);
-          if (tok !== playToken) return;
-          await sleep(120);
-        }
-      }
-      clearHilite();
-    }
-
-    function speakTarget() {
-      if (!current || !soundOn) return;
-      getAudioCtx();
-      playToken++;
-      stopSpeechOnly();
-      clearHilite();
-      sayText(current.targetText, playToken);
+      document.getElementById("msg").textContent = "سؤال جديد...";
+      nextTimer = setTimeout(() => loadQuestion(), 1900);
     }
 
     function shuffle(arr) {
@@ -714,6 +626,27 @@
         [copy[i], copy[j]] = [copy[j], copy[i]];
       }
       return copy;
+    }
+
+    // اختيار سؤال متنوع بدون تكرار سريع
+    function pickDiverseItem(lvl) {
+      const baseIndex = (currentMission * 3 + level * 5 + score) % DATA.length;
+      const candidates = [];
+      for (let offset = 0; offset < DATA.length; offset++) {
+        const idx = (baseIndex + offset * 7) % DATA.length;
+        const key = `${lvl}-${idx}`;
+        if (!recentKeys.includes(key)) {
+          candidates.push(idx);
+        }
+      }
+      const chosenIdx = candidates.length
+        ? candidates[Math.floor(Math.random() * Math.min(4, candidates.length))]
+        : ((baseIndex + Math.floor(Math.random() * DATA.length)) % DATA.length);
+
+      const qKey = `${lvl}-${chosenIdx}`;
+      recentKeys.push(qKey);
+      if (recentKeys.length > 14) recentKeys.shift();
+      return DATA[chosenIdx];
     }
 
     function makeBlankWord(word, targetLetter) {
@@ -732,49 +665,30 @@
     }
 
     function buildQuestion(lvl) {
-      const idx = (currentMission - 1 + Math.floor(Math.random() * 3)) % DATA.length;
-      const [letter, word, emoji] = DATA[idx];
+      const [letter, word, emoji] = pickDiverseItem(lvl);
       const pool = DATA.filter(d => d[0] !== letter);
       const wrongs = shuffle(pool).slice(0, 2).map(d => d[0]);
 
       if (lvl === 1) {
-        const options = shuffle([letter, ...wrongs]);
-        const optSpeeches = {};
-        for (const o of options) {
-          const found = DATA.find(d => d[0] === o);
-          optSpeeches[o] = found ? found[3] : o;
-        }
         return {
           icon: "❓🔤",
           hint: "المستوى ١ (سهل): بأي حرف تبدأ الكلمة؟",
           emoji,
           word,
-          bigChar: "",
-          options,
+          options: shuffle([letter, ...wrongs]),
           correct: letter,
-          optSpeeches,
-          speechTexts: ["بأي حرف تبدأ هذه الكلمة؟", word],
           targetText: word
         };
       }
 
       if (lvl === 2) {
-        const options = shuffle([letter, ...wrongs]);
-        const optSpeeches = {};
-        for (const o of options) {
-          const found = DATA.find(d => d[0] === o);
-          optSpeeches[o] = found ? found[3] : o;
-        }
         return {
           icon: "❓🖼️",
           hint: "المستوى ٢: خمن الحرف من الصورة بدون كلمة",
           emoji,
           word: "",
-          bigChar: "",
-          options,
+          options: shuffle([letter, ...wrongs]),
           correct: letter,
-          optSpeeches,
-          speechTexts: ["بأي حرف تبدأ هذه الصورة؟"],
           targetText: word
         };
       }
@@ -784,50 +698,33 @@
         const c = cands.length ? cands[0] : letter;
         const posIdx = word.indexOf(c);
         const correct = posIdx === 0 ? POSITIONS[0] : (posIdx === word.length - 1 ? POSITIONS[2] : POSITIONS[1]);
-        const info = DATA.find(d => d[0] === c);
-        const cName = info ? info[3] : c;
         return {
           icon: `📍 ${c}`,
           hint: `المستوى ٣: أين موقع حرف "${c}" في الكلمة؟`,
           emoji,
           word,
-          bigChar: "",
           options: [...POSITIONS],
           correct,
-          optSpeeches: { "أول": "أول", "وسط": "وسط", "آخر": "آخر" },
-          speechTexts: [`أين موقع حرف ${cName} في الكلمة؟`, word],
           targetText: word
         };
       }
 
       const blankDisplay = makeBlankWord(word, letter);
-      const options = shuffle([letter, ...wrongs]);
-      const optSpeeches = {};
-      for (const o of options) {
-        const found = DATA.find(d => d[0] === o);
-        optSpeeches[o] = found ? found[3] : o;
-      }
       return {
         icon: "🧩",
         hint: "المستوى ٤ (الأصعب): أكمل الفراغ بحرف واحد",
         emoji,
         word: blankDisplay,
-        bigChar: "",
-        options,
+        options: shuffle([letter, ...wrongs]),
         correct: letter,
-        optSpeeches,
-        speechTexts: ["أكمل الفراغ بالحرف الناقص"],
         targetText: word
       };
     }
 
-    function loadQuestion(autoSpeak = false) {
+    function loadQuestion() {
       clearTimeout(nextTimer);
       clearInterval(countdownId);
       locked = false;
-      playToken++;
-      stopSpeechOnly();
-      clearHilite();
       setAlert("", "");
       document.getElementById("mainCard").classList.remove("win-card");
       document.getElementById("msg").textContent = "";
@@ -839,22 +736,17 @@
 
       const stage = document.getElementById("stage");
       stage.innerHTML = "";
-      if (current.bigChar) {
-        const d = document.createElement("div");
-        d.className = "char-big";
-        d.textContent = current.bigChar;
-        stage.appendChild(d);
-      } else {
-        const em = document.createElement("div");
-        em.className = "emoji-big";
-        em.textContent = current.emoji;
-        stage.appendChild(em);
-        if (current.word) {
-          const w = document.createElement("div");
-          w.className = "word-txt";
-          w.textContent = current.word;
-          stage.appendChild(w);
-        }
+
+      const em = document.createElement("div");
+      em.className = "emoji-big";
+      em.textContent = current.emoji;
+      stage.appendChild(em);
+
+      if (current.word) {
+        const w = document.createElement("div");
+        w.className = "word-txt";
+        w.textContent = current.word;
+        stage.appendChild(w);
       }
 
       const optsDiv = document.getElementById("options");
@@ -869,9 +761,6 @@
       });
 
       startTimer();
-      if (autoSpeak) {
-        speakTimer = setTimeout(() => speakSequence(), 220);
-      }
     }
 
     function showCorrectCelebration() {
@@ -897,17 +786,9 @@
       stage.appendChild(w);
     }
 
-    async function onAnswer(choice, btn) {
+    function onAnswer(choice, btn) {
       if (locked || !current) return;
       getAudioCtx();
-      playToken++;
-      const tok = playToken;
-      stopSpeechOnly();
-      clearHilite();
-
-      const spoken = current.optSpeeches[choice];
-      if (spoken) await sayText(spoken, tok);
-      if (tok !== playToken) return;
 
       const msgEl = document.getElementById("msg");
       if (choice === current.correct) {
@@ -917,7 +798,7 @@
         btn.classList.add("ok");
 
         showCorrectCelebration();
-        playCheerClap();
+        playGentleClap();
 
         const set = getMissionSet(currentMission);
         set.add(level);
@@ -927,7 +808,7 @@
         const pText = PRAISE[Math.floor(Math.random() * PRAISE.length)];
         msgEl.style.color = "#15803D";
         msgEl.textContent = `${pText} 👏🌟`;
-        setAlert("ok", `🎉 إجابة صحيحة! أحسنت يا بطل — الكلمة هي "${current.targetText}"`);
+        setAlert("ok", `🎉 إجابة صحيحة! أحسنت يا بطل — "${current.targetText}"`);
 
         if (set.size >= 4) {
           stars += 1;
@@ -936,29 +817,23 @@
             maxUnlockedMission = currentMission + 1;
           }
           setAlert("ok", `🏆 كفو! عبرت كل مستويات المهمة ${currentMission} وانفتحت المهمة ${Math.min(TOTAL_MISSIONS, currentMission + 1)}`);
-          setTimeout(() => {
-            if (current && tok === playToken) sayText(current.targetText, tok);
-          }, 750);
           nextTimer = setTimeout(() => {
             renderStagesScreen();
-          }, 2700);
+          }, 2300);
         } else {
           const nextLvl = [1, 2, 3, 4].find(l => !set.has(l)) || (level < 4 ? level + 1 : 1);
-          setTimeout(() => {
-            if (current && tok === playToken) sayText(current.targetText, tok);
-          }, 750);
           nextTimer = setTimeout(() => {
             level = nextLvl;
             updateLevelButtonsUI();
-            loadQuestion(true);
-          }, 2500);
+            loadQuestion();
+          }, 2100);
         }
       } else {
         btn.classList.add("bad");
         setAlert("bad", `⚠️ تحذير: اختيارك "${choice}" غير صحيح! حاول مرة ثانية`);
         msgEl.style.color = "var(--bad)";
         msgEl.textContent = "إجابة خاطئة ❌";
-        playNotes([[300, 170], [220, 210]]);
+        playMelody([[311, 130], [233, 170]]);
       }
     }
 
