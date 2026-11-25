@@ -219,7 +219,7 @@
     const PRAISE = ["أحسنت!", "ممتاز!", "رائع!", "برافو!", "عظيم!"];
 
     let level = 1, score = 0, streak = 0, stars = 0, soundOn = true, locked = false;
-    let current = null, playToken = 0, nextTimer = null;
+    let current = null, playToken = 0, nextTimer = null, speakTimer = null;
 
     let audioCtx = null;
     function getAudioCtx() {
@@ -271,18 +271,23 @@
       window.speechSynthesis.onvoiceschanged = () => pickArabicVoice();
     }
 
+    function stopSpeechOnly() {
+      clearTimeout(speakTimer);
+      if ("speechSynthesis" in window) {
+        try { window.speechSynthesis.cancel(); } catch (_) {}
+      }
+    }
+
     function toggleSound() {
       soundOn = !soundOn;
       document.getElementById("soundBtn").textContent = soundOn ? "🔊" : "🔇";
       if (!soundOn) {
         playToken++;
-        if ("speechSynthesis" in window) {
-          try { window.speechSynthesis.cancel(); } catch (_) {}
-        }
+        stopSpeechOnly();
         clearHilite();
       } else {
         getAudioCtx();
-        beep(520, 90);
+        speakSequence();
       }
     }
 
@@ -292,7 +297,7 @@
       document.querySelectorAll(".lvl-btn").forEach(b => {
         b.classList.toggle("active", Number(b.dataset.lvl) === lvl);
       });
-      loadQuestion();
+      loadQuestion(true);
     }
 
     function updateStats(full = false) {
@@ -305,6 +310,12 @@
 
     function clearHilite() {
       document.querySelectorAll(".opt-btn.hilite").forEach(b => b.classList.remove("hilite"));
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => {
+        speakTimer = setTimeout(resolve, ms);
+      });
     }
 
     function sayText(text, token) {
@@ -341,15 +352,16 @@
       getAudioCtx();
       playToken++;
       const tok = playToken;
-      if ("speechSynthesis" in window) {
-        try { window.speechSynthesis.cancel(); } catch (_) {}
-      }
+      stopSpeechOnly();
       clearHilite();
 
       for (const txt of current.speechTexts) {
         if (tok !== playToken) return;
         await sayText(txt, tok);
+        if (tok !== playToken) return;
+        await sleep(140);
       }
+
       const optBtns = [...document.querySelectorAll(".opt-btn")];
       for (let i = 0; i < current.options.length; i++) {
         if (tok !== playToken) return;
@@ -360,6 +372,8 @@
           clearHilite();
           if (btn) btn.classList.add("hilite");
           await sayText(spoken, tok);
+          if (tok !== playToken) return;
+          await sleep(120);
         }
       }
       clearHilite();
@@ -369,9 +383,7 @@
       if (!current || !soundOn) return;
       getAudioCtx();
       playToken++;
-      if ("speechSynthesis" in window) {
-        try { window.speechSynthesis.cancel(); } catch (_) {}
-      }
+      stopSpeechOnly();
       clearHilite();
       sayText(current.targetText, playToken);
     }
@@ -458,13 +470,11 @@
       };
     }
 
-    function loadQuestion() {
+    function loadQuestion(autoSpeak = false) {
       clearTimeout(nextTimer);
       locked = false;
       playToken++;
-      if ("speechSynthesis" in window) {
-        try { window.speechSynthesis.cancel(); } catch (_) {}
-      }
+      stopSpeechOnly();
       clearHilite();
       document.getElementById("msg").textContent = "";
       updateStats(false);
@@ -503,6 +513,10 @@
         btn.onclick = () => onAnswer(opt, btn);
         optsDiv.appendChild(btn);
       });
+
+      if (autoSpeak) {
+        speakTimer = setTimeout(() => speakSequence(), 220);
+      }
     }
 
     async function onAnswer(choice, btn) {
@@ -510,9 +524,7 @@
       getAudioCtx();
       playToken++;
       const tok = playToken;
-      if ("speechSynthesis" in window) {
-        try { window.speechSynthesis.cancel(); } catch (_) {}
-      }
+      stopSpeechOnly();
       clearHilite();
 
       const spoken = current.optSpeeches[choice];
@@ -542,8 +554,8 @@
 
         setTimeout(() => {
           if (current && tok === playToken) sayText(current.targetText, tok);
-        }, 700);
-        nextTimer = setTimeout(() => loadQuestion(), 2300);
+        }, 750);
+        nextTimer = setTimeout(() => loadQuestion(true), 2400);
       } else {
         streak = 0;
         updateStats(false);
@@ -554,7 +566,7 @@
       }
     }
 
-    loadQuestion();
+    loadQuestion(false);
   </script>
 </body>
 </html>
