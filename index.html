@@ -415,7 +415,7 @@
     document.addEventListener("touchstart", unlockAudioOnFirstTouch, { passive: true });
     document.addEventListener("pointerdown", unlockAudioOnFirstTouch, { passive: true });
 
-    function playSoftTone(freq, ms, vol = 0.2) {
+    function playSoftTone(freq, ms, vol = 0.22) {
       if (!soundOn) return;
       const ctx = getAudioCtx();
       if (!ctx) return;
@@ -436,7 +436,7 @@
       } catch (_) {}
     }
 
-    function playMelody(notes, vol = 0.2) {
+    function playMelody(notes, vol = 0.22) {
       let delay = 0;
       for (const [f, d] of notes) {
         setTimeout(() => playSoftTone(f, d, vol), delay);
@@ -479,7 +479,7 @@
       });
 
       setTimeout(() => {
-        playMelody([[523, 120], [659, 130], [784, 200]], 0.22);
+        playMelody([[523, 120], [659, 130], [784, 200]], 0.24);
       }, 520);
     }
 
@@ -808,4 +808,86 @@
 
       startTimer();
       if (autoSpeak) {
-        setTimeout(() => speak
+        setTimeout(() => speakArabic(current.questionSpoken), 180);
+      }
+    }
+
+    function showCorrectCelebration() {
+      document.getElementById("mainCard").classList.add("win-card");
+      const stage = document.getElementById("stage");
+      stage.innerHTML = "";
+
+      const clapRow = document.createElement("div");
+      clapRow.className = "clap-banner";
+      clapRow.textContent = "👏✨👏";
+      stage.appendChild(clapRow);
+
+      if (current && current.emoji) {
+        const em = document.createElement("div");
+        em.className = "emoji-big win-bounce";
+        em.textContent = current.emoji;
+        stage.appendChild(em);
+      }
+
+      const w = document.createElement("div");
+      w.className = "word-txt win-word";
+      w.textContent = current.targetText;
+      stage.appendChild(w);
+    }
+
+    function onAnswer(choice, btn) {
+      if (locked || !current) return;
+      unlockAudioOnFirstTouch();
+
+      const msgEl = document.getElementById("msg");
+      if (choice === current.correct) {
+        locked = true;
+        clearInterval(countdownId);
+        score += 1;
+        btn.classList.add("ok");
+
+        showCorrectCelebration();
+        playGentleClap();
+        setTimeout(() => speakArabic(current.targetText), 650);
+
+        const set = getMissionSet(currentMission);
+        set.add(level);
+        updateLevelButtonsUI();
+        updateStats();
+
+        const pText = PRAISE[Math.floor(Math.random() * PRAISE.length)];
+        msgEl.style.color = "#15803D";
+        msgEl.textContent = `${pText} 👏🌟`;
+        setAlert("ok", `🎉 إجابة صحيحة! أحسنت يا بطل — "${current.targetText}"`);
+
+        if (set.size >= 4) {
+          stars += 1;
+          updateStats();
+          if (currentMission < TOTAL_MISSIONS && maxUnlockedMission < currentMission + 1) {
+            maxUnlockedMission = currentMission + 1;
+          }
+          setAlert("ok", `🏆 كفو! عبرت كل مستويات المهمة ${currentMission} وانفتحت المهمة ${Math.min(TOTAL_MISSIONS, currentMission + 1)}`);
+          nextTimer = setTimeout(() => {
+            renderStagesScreen();
+          }, 2400);
+        } else {
+          const nextLvl = [1, 2, 3, 4].find(l => !set.has(l)) || (level < 4 ? level + 1 : 1);
+          nextTimer = setTimeout(() => {
+            level = nextLvl;
+            updateLevelButtonsUI();
+            loadQuestion(true);
+          }, 2200);
+        }
+      } else {
+        btn.classList.add("bad");
+        setAlert("bad", `⚠️ تحذير: اختيارك "${choice}" غير صحيح! حاول مرة ثانية`);
+        msgEl.style.color = "var(--bad)";
+        msgEl.textContent = "إجابة خاطئة ❌";
+        playMelody([[311, 150], [233, 200]], 0.24);
+      }
+    }
+
+    renderStagesScreen();
+  </script>
+</body>
+</html>
