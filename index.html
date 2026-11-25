@@ -17,7 +17,6 @@
       --ok: #22C55E;
       --bad: #EF4444;
       --warn: #D97706;
-      --warn-bg: #FEF3C7;
       --gold: #F59E0B;
       --hilite: #FEF9C3;
     }
@@ -31,7 +30,7 @@
       justify-content: center;
       min-height: 100vh;
     }
-    .app { width: 100%; max-width: 520px; padding-bottom: 24px; }
+    .app { width: 100%; max-width: 540px; padding-bottom: 28px; }
     header {
       background: var(--primary);
       color: #fff;
@@ -41,53 +40,98 @@
       justify-content: space-between;
       gap: 8px;
     }
-    .title { font-size: 1.15rem; font-weight: 800; }
+    .title { font-size: 1.1rem; font-weight: 800; }
     .chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .chip {
       background: var(--primary-light);
       padding: 4px 9px;
       border-radius: 10px;
       font-weight: 700;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
     }
-    .chip.timer-chip {
-      background: #FEF3C7;
-      color: #92400E;
-    }
-    .chip.timer-chip.urgent {
-      background: #FEE2E2;
-      color: #991B1B;
-    }
+    .chip.timer-chip { background: #FEF3C7; color: #92400E; }
+    .chip.timer-chip.urgent { background: #FEE2E2; color: #991B1B; }
     .icon-btn {
       background: var(--primary-dark);
       color: #fff;
       border: none;
       border-radius: 10px;
       padding: 6px 10px;
-      font-size: 1.05rem;
+      font-size: 1rem;
       cursor: pointer;
     }
-    .stages-bar {
+
+    /* شاشة المراحل الـ 30 */
+    .stages-screen { padding: 14px; }
+    .screen-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      gap: 8px;
+    }
+    .screen-head h2 { margin: 0; font-size: 1.15rem; font-weight: 800; }
+    .sub-note { font-size: 0.85rem; color: #4B5563; margin-bottom: 12px; font-weight: 600; }
+    .stages-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      padding: 10px 14px 4px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
     }
-    .stage-btn {
-      background: #EDE9FE;
-      color: var(--primary-dark);
-      border: 2px solid #DDD6FE;
-      border-radius: 12px;
-      padding: 7px 4px;
+    .st-card {
+      background: #fff;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 4px;
+      text-align: center;
+      cursor: pointer;
       font-weight: 800;
-      font-size: 0.78rem;
+      color: var(--primary-dark);
+      transition: transform 0.12s;
+    }
+    .st-card:active { transform: scale(0.96); }
+    .st-card.done {
+      background: #DCFCE7;
+      border-color: var(--ok);
+      color: #166534;
+    }
+    .st-card.locked {
+      background: #E5E7EB;
+      border-color: #D1D5DB;
+      color: #6B7280;
+      cursor: not-allowed;
+      opacity: 0.8;
+    }
+    .st-num { font-size: 1rem; }
+    .st-sub { font-size: 0.72rem; margin-top: 3px; }
+
+    /* شاشة اللعب داخل المهمة */
+    .game-screen { display: none; }
+    .game-screen.active { display: block; }
+    .stages-screen.hidden { display: none; }
+
+    .top-subbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px 4px;
+      gap: 8px;
+    }
+    .back-btn {
+      background: #E0E7FF;
+      color: var(--primary-dark);
+      border: none;
+      border-radius: 10px;
+      padding: 7px 12px;
+      font-weight: 800;
+      font-size: 0.85rem;
       cursor: pointer;
     }
-    .stage-btn.active {
-      background: var(--primary-dark);
-      color: #fff;
-      border-color: var(--primary-dark);
+    .mission-badge {
+      font-weight: 800;
+      font-size: 0.92rem;
+      color: var(--primary-dark);
     }
+
     .levels {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -101,7 +145,7 @@
       border-radius: 12px;
       padding: 8px 4px;
       font-weight: 700;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       cursor: pointer;
     }
     .lvl-btn.active {
@@ -109,6 +153,17 @@
       color: #fff;
       border-color: var(--primary);
     }
+    .lvl-btn.passed {
+      border-color: var(--ok);
+      background: #ECFDF5;
+      color: #166534;
+    }
+    .lvl-btn.active.passed {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
     .card {
       background: #fff;
       border: 1px solid var(--border);
@@ -117,18 +172,31 @@
       padding: 14px;
       text-align: center;
       box-shadow: 0 6px 20px rgba(79, 70, 229, 0.07);
+      position: relative;
+      overflow: hidden;
     }
     .stage {
-      min-height: 165px;
+      min-height: 170px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 8px;
     }
-    .emoji-big { font-size: 4.4rem; line-height: 1.1; }
+    .emoji-big { font-size: 4.6rem; line-height: 1.1; transition: transform 0.25s; }
+    .emoji-big.clap-anim { animation: clapPop 0.7s ease; }
+    @keyframes clapPop {
+      0% { transform: scale(0.85); }
+      50% { transform: scale(1.22); }
+      100% { transform: scale(1); }
+    }
     .char-big { font-size: 5rem; font-weight: 800; color: var(--text); line-height: 1.1; }
-    .word-txt { font-size: 2rem; font-weight: 800; color: var(--primary); }
+    .word-txt {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: 2px;
+    }
     .qrow { display: flex; justify-content: center; gap: 10px; margin-top: 8px; }
     .q-btn {
       background: #FEF3C7;
@@ -148,13 +216,14 @@
       cursor: pointer;
     }
     .hint { font-size: 0.85rem; color: #6B7280; margin-top: 6px; min-height: 18px; }
+
     .alert-box {
       display: none;
       margin: 10px 14px 0;
       padding: 10px 12px;
       border-radius: 14px;
       font-weight: 800;
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       text-align: center;
     }
     .alert-box.show { display: block; }
@@ -164,7 +233,7 @@
       border: 2px solid #FCA5A5;
     }
     .alert-box.warn {
-      background: var(--warn-bg);
+      background: #FEF3C7;
       color: #92400E;
       border: 2px solid #FCD34D;
     }
@@ -173,11 +242,12 @@
       color: #166534;
       border: 2px solid #86EFAC;
     }
+
     .msg {
       text-align: center;
-      font-size: 1.2rem;
+      font-size: 1.25rem;
       font-weight: 800;
-      min-height: 30px;
+      min-height: 32px;
       margin: 8px 14px 4px;
     }
     .prog-wrap {
@@ -212,7 +282,7 @@
       cursor: pointer;
       transition: transform 0.1s, background 0.15s;
     }
-    .opt-btn.text-opt { font-size: 1.25rem; }
+    .opt-btn.text-opt { font-size: 1.2rem; }
     .opt-btn:active { transform: scale(0.97); }
     .opt-btn.hilite { background: var(--hilite); color: var(--text); border-color: var(--gold); }
     .opt-btn.ok { background: var(--ok); color: #fff; border-color: var(--ok); }
@@ -226,42 +296,55 @@
       <div class="chips">
         <span class="chip timer-chip" id="timerChip">⏱️ 15</span>
         <span class="chip" id="scoreChip">⭐ 0</span>
-        <span class="chip" id="streakChip">🔥 0</span>
         <span class="chip" id="starsChip">🏅 0</span>
         <button class="icon-btn" id="soundBtn" onclick="toggleSound()">🔊</button>
       </div>
     </header>
 
-    <div class="stages-bar">
-      <button class="stage-btn active" data-st="1" onclick="selectStage(1)">م ١: سهل</button>
-      <button class="stage-btn" data-st="2" onclick="selectStage(2)">م ٢: متوسط</button>
-      <button class="stage-btn" data-st="3" onclick="selectStage(3)">م ٣: صعب</button>
-      <button class="stage-btn" data-st="4" onclick="selectStage(4)">م ٤: تحدي</button>
-    </div>
-
-    <div class="levels">
-      <button class="lvl-btn active" data-lvl="1" onclick="selectLevel(1)">١ مع الكلمة</button>
-      <button class="lvl-btn" data-lvl="2" onclick="selectLevel(2)">٢ بدون كلمة</button>
-      <button class="lvl-btn" data-lvl="3" onclick="selectLevel(3)">٣ موقع الحرف</button>
-      <button class="lvl-btn" data-lvl="4" onclick="selectLevel(4)">٤ الحركات</button>
-    </div>
-
-    <div class="card">
-      <div class="stage" id="stage"></div>
-      <div class="qrow">
-        <button class="q-btn" id="qBtn" onclick="speakSequence()">❓🔤</button>
-        <button class="listen-btn" onclick="speakTarget()">🔈</button>
+    <!-- شاشة اختيار المهمة (30 مهمة) -->
+    <section class="stages-screen" id="stagesScreen">
+      <div class="screen-head">
+        <h2>المهام (30 مهمة)</h2>
+        <span class="chip" id="unlockedChip">مفتوحة: 1 / 30</span>
       </div>
-      <div class="hint" id="hint"></div>
-    </div>
+      <div class="sub-note">اعبر المستويات الـ 4 في كل مهمة حتى تفتح المهمة اللي بعدها.</div>
+      <div class="stages-grid" id="stagesGrid"></div>
+    </section>
 
-    <div class="alert-box" id="alertBox"></div>
-    <div class="msg" id="msg"></div>
-    <div class="prog-wrap"><div class="prog-bar" id="progBar"></div></div>
-    <div class="options" id="options"></div>
+    <!-- شاشة اللعب -->
+    <section class="game-screen" id="gameScreen">
+      <div class="top-subbar">
+        <button class="back-btn" onclick="openStagesScreen()">← المهام</button>
+        <div class="mission-badge" id="missionBadge">مهمة 1</div>
+      </div>
+
+      <div class="levels">
+        <button class="lvl-btn active" data-lvl="1" onclick="selectLevel(1)">١ مع الكلمة</button>
+        <button class="lvl-btn" data-lvl="2" onclick="selectLevel(2)">٢ بدون كلمة</button>
+        <button class="lvl-btn" data-lvl="3" onclick="selectLevel(3)">٣ موقع الحرف</button>
+        <button class="lvl-btn" data-lvl="4" onclick="selectLevel(4)">٤ فراغ وحرف</button>
+      </div>
+
+      <div class="card">
+        <div class="stage" id="stage"></div>
+        <div class="qrow">
+          <button class="q-btn" id="qBtn" onclick="speakSequence()">❓🔤</button>
+          <button class="listen-btn" onclick="speakTarget()">🔈</button>
+        </div>
+        <div class="hint" id="hint"></div>
+      </div>
+
+      <div class="alert-box" id="alertBox"></div>
+      <div class="msg" id="msg"></div>
+      <div class="prog-wrap"><div class="prog-bar" id="progBar"></div></div>
+      <div class="options" id="options"></div>
+    </section>
   </div>
 
   <script>
+    const TOTAL_MISSIONS = 30;
+    const QUESTION_SECONDS = 15;
+
     const DATA = [
       ["أ", "أسد", "🦁", "ألف"], ["ب", "بطة", "🦆", "باء"],
       ["ت", "تفاحة", "🍎", "تاء"], ["ث", "ثعلب", "🦊", "ثاء"],
@@ -278,23 +361,26 @@
       ["ن", "نحلة", "🐝", "نون"], ["ه", "هدية", "🎁", "هاء"],
       ["و", "وردة", "🌹", "واو"], ["ي", "يد", "✋", "ياء"]
     ];
-    const SIMILAR_GROUPS = [
-      ["ب", "ت", "ث", "ن", "ي"],
-      ["ج", "ح", "خ"],
-      ["د", "ذ", "ر", "ز"],
-      ["س", "ش", "ص", "ض"],
-      ["ط", "ظ", "ع", "غ"],
-      ["ف", "ق", "ك", "ل", "م", "ه", "و", "أ"]
-    ];
     const ALL_LETTERS = new Set(DATA.map(d => d[0]));
     const HARAKAT = [["َ", "فتحة"], ["ُ", "ضمة"], ["ِ", "كسرة"]];
     const POSITIONS = ["أول", "وسط", "آخر"];
     const PRAISE = ["أحسنت!", "ممتاز!", "رائع!", "برافو!", "عظيم!"];
-    const QUESTION_SECONDS = 15;
 
-    let stageNum = 1, level = 1, score = 0, streak = 0, stars = 0;
-    let soundOn = true, locked = false, timeLeft = QUESTION_SECONDS;
-    let current = null, playToken = 0, nextTimer = null, speakTimer = null, countdownId = null;
+    // تقدم المهام: كل مهمة تحتفظ بالمستويات اللي عبرتها [1,2,3,4]
+    let maxUnlockedMission = 1;
+    let passedByMission = {}; // { 1: Set([1,2]) }
+    let currentMission = 1;
+    let level = 1;
+    let score = 0;
+    let stars = 0;
+    let soundOn = true;
+    let locked = false;
+    let timeLeft = QUESTION_SECONDS;
+    let current = null;
+    let playToken = 0;
+    let nextTimer = null;
+    let speakTimer = null;
+    let countdownId = null;
 
     let audioCtx = null;
     function getAudioCtx() {
@@ -308,7 +394,7 @@
       return audioCtx;
     }
 
-    function beep(freq, ms) {
+    function beep(freq, ms, vol = 0.14) {
       if (!soundOn) return;
       const ctx = getAudioCtx();
       if (!ctx) return;
@@ -316,7 +402,7 @@
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.frequency.value = freq;
-        gain.gain.value = 0.14;
+        gain.gain.value = vol;
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start();
@@ -330,6 +416,37 @@
         setTimeout(() => beep(f, d), delay);
         delay += d + 25;
       }
+    }
+
+    // صوت تصفيق إيقاعي لكل إجابة صحيحة
+    function playClapSound() {
+      if (!soundOn) return;
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const claps = [0, 120, 240, 380];
+      claps.forEach(delay => {
+        setTimeout(() => {
+          try {
+            const len = Math.floor(ctx.sampleRate * 0.065);
+            const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < len; i++) {
+              data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.35));
+            }
+            const src = ctx.createBufferSource();
+            src.buffer = buf;
+            const filter = ctx.createBiquadFilter();
+            filter.type = "bandpass";
+            filter.frequency.value = 1800;
+            const gain = ctx.createGain();
+            gain.gain.value = 0.35;
+            src.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+            src.start();
+          } catch (_) {}
+        }, delay);
+      });
     }
 
     function pickArabicVoice() {
@@ -362,7 +479,7 @@
         clearHilite();
       } else {
         getAudioCtx();
-        speakSequence();
+        if (current) speakSequence();
       }
     }
 
@@ -377,13 +494,66 @@
       box.textContent = text;
     }
 
-    function selectStage(st) {
-      clearTimeout(nextTimer);
+    function getMissionSet(m) {
+      if (!passedByMission[m]) passedByMission[m] = new Set();
+      return passedByMission[m];
+    }
+
+    function renderStagesScreen() {
       clearInterval(countdownId);
-      stageNum = st;
-      document.querySelectorAll(".stage-btn").forEach(b => {
-        b.classList.toggle("active", Number(b.dataset.st) === st);
+      clearTimeout(nextTimer);
+      stopSpeechOnly();
+
+      document.getElementById("stagesScreen").classList.remove("hidden");
+      document.getElementById("gameScreen").classList.remove("active");
+      document.getElementById("unlockedChip").textContent = `مفتوحة: ${maxUnlockedMission} / ${TOTAL_MISSIONS}`;
+
+      const grid = document.getElementById("stagesGrid");
+      grid.innerHTML = "";
+
+      for (let m = 1; m <= TOTAL_MISSIONS; m++) {
+        const isUnlocked = m <= maxUnlockedMission;
+        const passedCount = getMissionSet(m).size;
+        const isDone = passedCount >= 4;
+
+        const card = document.createElement("button");
+        card.className = "st-card" + (isDone ? " done" : (!isUnlocked ? " locked" : ""));
+        card.disabled = !isUnlocked;
+        card.innerHTML = `
+          <div class="st-num">${!isUnlocked ? "🔒" : (isDone ? "✅" : "🎯")} ${m}</div>
+          <div class="st-sub">${!isUnlocked ? "مقفول" : `${passedCount}/4`}</div>
+        `;
+        if (isUnlocked) {
+          card.onclick = () => startMission(m);
+        }
+        grid.appendChild(card);
+      }
+    }
+
+    function openStagesScreen() {
+      renderStagesScreen();
+    }
+
+    function updateLevelButtonsUI() {
+      const set = getMissionSet(currentMission);
+      document.querySelectorAll(".lvl-btn").forEach(b => {
+        const l = Number(b.dataset.lvl);
+        b.classList.toggle("active", l === level);
+        b.classList.toggle("passed", set.has(l));
       });
+    }
+
+    function startMission(m) {
+      currentMission = m;
+      const set = getMissionSet(m);
+      // ابدأ بأول مستوى بعده ما معبور، أو المستوى 1 إذا مكتملة
+      const firstUnpassed = [1, 2, 3, 4].find(l => !set.has(l));
+      level = firstUnpassed || 1;
+
+      document.getElementById("stagesScreen").classList.add("hidden");
+      document.getElementById("gameScreen").classList.add("active");
+      document.getElementById("missionBadge").textContent = `مهمة ${currentMission} من ${TOTAL_MISSIONS}`;
+      updateLevelButtonsUI();
       loadQuestion(true);
     }
 
@@ -391,18 +561,15 @@
       clearTimeout(nextTimer);
       clearInterval(countdownId);
       level = lvl;
-      document.querySelectorAll(".lvl-btn").forEach(b => {
-        b.classList.toggle("active", Number(b.dataset.lvl) === lvl);
-      });
+      updateLevelButtonsUI();
       loadQuestion(true);
     }
 
-    function updateStats(full = false) {
+    function updateStats() {
+      const passedCount = getMissionSet(currentMission).size;
       document.getElementById("scoreChip").textContent = `⭐ ${score}`;
-      document.getElementById("streakChip").textContent = `🔥 ${streak}`;
       document.getElementById("starsChip").textContent = `🏅 ${stars}`;
-      const pct = full ? 100 : ((score % 5) / 5) * 100;
-      document.getElementById("progBar").style.width = `${pct}%`;
+      document.getElementById("progBar").style.width = `${(passedCount / 4) * 100}%`;
     }
 
     function updateTimerUI() {
@@ -420,7 +587,7 @@
         timeLeft -= 1;
         updateTimerUI();
         if (timeLeft <= 5 && timeLeft > 0) {
-          beep(440, 60);
+          beep(440, 60, 0.08);
         }
         if (timeLeft <= 0) {
           clearInterval(countdownId);
@@ -432,12 +599,10 @@
     function onTimeUp() {
       if (locked || !current) return;
       locked = true;
-      streak = 0;
-      updateStats(false);
       playNotes([[260, 180], [210, 240]]);
       setAlert("warn", `⏰ انتهى الوقت (15 ثانية)! الجواب الصحيح: "${current.correct}"`);
       document.getElementById("msg").style.color = "var(--warn)";
-      document.getElementById("msg").textContent = "ننتقل للسؤال التالي...";
+      document.getElementById("msg").textContent = "نعيد السؤال...";
       nextTimer = setTimeout(() => loadQuestion(true), 2200);
     }
 
@@ -530,109 +695,111 @@
       return copy;
     }
 
-    function pickWrongLetters(letter, count) {
-      const grp = SIMILAR_GROUPS.find(g => g.includes(letter)) || [];
-      const similarPool = DATA.filter(d => d[0] !== letter && grp.includes(d[0])).map(d => d[0]);
-      const otherPool = DATA.filter(d => d[0] !== letter && !similarPool.includes(d[0])).map(d => d[0]);
-      const chosen = [];
-      if (stageNum >= 2) {
-        for (const l of shuffle(similarPool)) {
-          if (chosen.length < count) chosen.push(l);
+    function makeBlankWord(word, targetLetter) {
+      const chars = [...word];
+      let replaced = false;
+      for (let i = 0; i < chars.length; i++) {
+        if (chars[i] === targetLetter && !replaced) {
+          chars[i] = "＿";
+          replaced = true;
         }
       }
-      for (const l of shuffle(otherPool)) {
-        if (chosen.length < count) chosen.push(l);
+      if (!replaced && chars.length > 0) {
+        chars[0] = "＿";
       }
-      return chosen.slice(0, count);
+      return chars.join(" ");
     }
 
     function buildQuestion(lvl) {
-      const wrongCount = stageNum >= 4 ? 2 : 2;
-      if (lvl === 1 || lvl === 2) {
-        const idx = Math.floor(Math.random() * DATA.length);
-        const [letter, word, emoji] = DATA[idx];
-        const wrongs = pickWrongLetters(letter, wrongCount);
+      // نختار كلمة من البيانات حسب رقم المهمة
+      const idx = (currentMission - 1 + Math.floor(Math.random() * 3)) % DATA.length;
+      const [letter, word, emoji, letterName] = DATA[idx];
+      const pool = DATA.filter(d => d[0] !== letter);
+      const wrongs = shuffle(pool).slice(0, 2).map(d => d[0]);
+
+      if (lvl === 1) {
         const options = shuffle([letter, ...wrongs]);
         const optSpeeches = {};
         for (const o of options) {
           const found = DATA.find(d => d[0] === o);
           optSpeeches[o] = found ? found[3] : o;
         }
-        const hideWord = (lvl === 2) || (stageNum >= 3);
-        const hideEmoji = (stageNum === 4) && (lvl === 2);
         return {
           icon: "❓🔤",
-          hint: `المرحلة ${stageNum} — بأي حرف تبدأ هذه الكلمة؟`,
-          emoji: hideEmoji ? "🔤" : emoji,
-          word: hideWord ? "؟" : word,
+          hint: "المستوى ١ (سهل): بأي حرف تبدأ الكلمة؟",
+          emoji,
+          word,
           bigChar: "",
           options,
           correct: letter,
           optSpeeches,
-          speechTexts: hideWord ? ["بأي حرف تبدأ هذه الكلمة؟"] : ["بأي حرف تبدأ هذه الكلمة؟", word],
+          speechTexts: ["بأي حرف تبدأ هذه الكلمة؟", word],
+          targetText: word
+        };
+      }
+
+      if (lvl === 2) {
+        const options = shuffle([letter, ...wrongs]);
+        const optSpeeches = {};
+        for (const o of options) {
+          const found = DATA.find(d => d[0] === o);
+          optSpeeches[o] = found ? found[3] : o;
+        }
+        return {
+          icon: "❓🖼️",
+          hint: "المستوى ٢: خمن الحرف من الصورة بدون كلمة",
+          emoji,
+          word: "",
+          bigChar: "",
+          options,
+          correct: letter,
+          optSpeeches,
+          speechTexts: ["بأي حرف تبدأ هذه الصورة؟"],
           targetText: word
         };
       }
 
       if (lvl === 3) {
-        let word = "", emoji = "", cands = [];
-        for (let tries = 0; tries < 50; tries++) {
-          const idx = Math.floor(Math.random() * DATA.length);
-          [, word, emoji] = DATA[idx];
-          cands = [...word].filter(c => ALL_LETTERS.has(c) && word.split(c).length - 1 === 1);
-          if (cands.length) break;
-        }
-        const c = cands[Math.floor(Math.random() * cands.length)];
+        const cands = [...word].filter(c => ALL_LETTERS.has(c) && word.split(c).length - 1 === 1);
+        const c = cands.length ? cands[0] : letter;
         const posIdx = word.indexOf(c);
         const correct = posIdx === 0 ? POSITIONS[0] : (posIdx === word.length - 1 ? POSITIONS[2] : POSITIONS[1]);
-        const letterInfo = DATA.find(d => d[0] === c);
-        const letterName = letterInfo ? letterInfo[3] : c;
-        const optSpeeches = { "أول": "أول", "وسط": "وسط", "آخر": "آخر" };
-        const hideWordInStage4 = stageNum === 4;
+        const info = DATA.find(d => d[0] === c);
+        const cName = info ? info[3] : c;
         return {
           icon: `📍 ${c}`,
-          hint: `المرحلة ${stageNum} — أين موقع حرف "${c}"؟`,
-          emoji: hideWordInStage4 ? "📍" : emoji,
-          word: hideWordInStage4 ? "كلمة مخفية" : word,
+          hint: `المستوى ٣: أين موقع حرف "${c}" في الكلمة؟`,
+          emoji,
+          word,
           bigChar: "",
           options: [...POSITIONS],
           correct,
-          optSpeeches,
-          speechTexts: hideWordInStage4
-            ? [`أين موقع حرف ${letterName} في الكلمة؟`]
-            : [`أين موقع حرف ${letterName} في الكلمة؟`, word],
+          optSpeeches: { "أول": "أول", "وسط": "وسط", "آخر": "آخر" },
+          speechTexts: [`أين موقع حرف ${cName} في الكلمة؟`, word],
           targetText: word
         };
       }
 
-      const idx = Math.floor(Math.random() * DATA.length);
-      const letter = DATA[idx][0];
-      const m = Math.floor(Math.random() * 3);
-      const syl = letter + HARAKAT[m][0];
-      const optSpeeches = { "فتحة": "فتحة", "ضمة": "ضمة", "كسرة": "كسرة" };
-      return {
-        icon: "✨❓",
-        hint: `المرحلة ${stageNum} — ما اسم هذه الحركة؟`,
-        emoji: "",
-        word: "",
-        bigChar: syl,
-        options: HARAKAT.map(h => h[1]),
-        correct: HARAKAT[m][1],
-        optSpeeches,
-        speechTexts: ["ما اسم هذه الحركة؟", syl],
-        targetText: syl
-      };
-    }
-
-    function checkAutoStageUp() {
-      const targetStage = Math.min(4, 1 + Math.floor(score / 6));
-      if (targetStage > stageNum) {
-        stageNum = targetStage;
-        document.querySelectorAll(".stage-btn").forEach(b => {
-          b.classList.toggle("active", Number(b.dataset.st) === stageNum);
-        });
-        setAlert("ok", `🚀 صعدت إلى المرحلة ${stageNum}! الصعوبة زادت`);
+      // المستوى ٤ (الأصعب): تخمين الحرف بطريقة فراغ وحرف واحد
+      const blankDisplay = makeBlankWord(word, letter);
+      const options = shuffle([letter, ...wrongs]);
+      const optSpeeches = {};
+      for (const o of options) {
+        const found = DATA.find(d => d[0] === o);
+        optSpeeches[o] = found ? found[3] : o;
       }
+      return {
+        icon: "🧩",
+        hint: "المستوى ٤ (الأصعب): أكمل الفراغ بحرف واحد",
+        emoji,
+        word: blankDisplay,
+        bigChar: "",
+        options,
+        correct: letter,
+        optSpeeches,
+        speechTexts: ["أكمل الفراغ بالحرف الناقص"],
+        targetText: word
+      };
     }
 
     function loadQuestion(autoSpeak = false) {
@@ -644,7 +811,7 @@
       clearHilite();
       setAlert("", "");
       document.getElementById("msg").textContent = "";
-      updateStats(false);
+      updateStats();
 
       current = buildQuestion(level);
       document.getElementById("qBtn").textContent = current.icon;
@@ -660,6 +827,7 @@
       } else {
         const em = document.createElement("div");
         em.className = "emoji-big";
+        em.id = "stageEmoji";
         em.textContent = current.emoji;
         stage.appendChild(em);
         if (current.word) {
@@ -672,7 +840,7 @@
 
       const optsDiv = document.getElementById("options");
       optsDiv.innerHTML = "";
-      const isTextOpt = (level === 3 || level === 4);
+      const isTextOpt = (level === 3);
       current.options.forEach(opt => {
         const btn = document.createElement("button");
         btn.className = "opt-btn" + (isTextOpt ? " text-opt" : "");
@@ -685,6 +853,21 @@
       if (autoSpeak) {
         speakTimer = setTimeout(() => speakSequence(), 220);
       }
+    }
+
+    function showCorrectVisualClap() {
+      const stage = document.getElementById("stage");
+      stage.innerHTML = "";
+      if (current && current.emoji) {
+        const em = document.createElement("div");
+        em.className = "emoji-big clap-anim";
+        em.textContent = current.emoji;
+        stage.appendChild(em);
+      }
+      const w = document.createElement("div");
+      w.className = "word-txt";
+      w.textContent = `${current.targetText} 👏`;
+      stage.appendChild(w);
     }
 
     async function onAnswer(choice, btn) {
@@ -704,40 +887,46 @@
         locked = true;
         clearInterval(countdownId);
         score += 1;
-        streak += 1;
         btn.classList.add("ok");
-        checkAutoStageUp();
 
-        if (score % 5 === 0) {
+        // إظهار الصورة مع التصفيق لكل إجابة صحيحة
+        showCorrectVisualClap();
+        playClapSound();
+
+        const set = getMissionSet(currentMission);
+        set.add(level);
+        updateLevelButtonsUI();
+        updateStats();
+
+        const pText = PRAISE[Math.floor(Math.random() * PRAISE.length)];
+        msgEl.style.color = "var(--ok)";
+        msgEl.textContent = `${pText} 👏🎉`;
+
+        // تحقق هل عبر جميع المستويات الـ 4 في المهمة الحالية
+        if (set.size >= 4) {
           stars += 1;
-          updateStats(true);
-          msgEl.style.color = "var(--gold)";
-          msgEl.textContent = "نجمة جديدة! 🌟👏";
-          playNotes([[523,120],[659,120],[784,120],[1047,300]]);
+          updateStats();
+          if (currentMission < TOTAL_MISSIONS && maxUnlockedMission < currentMission + 1) {
+            maxUnlockedMission = currentMission + 1;
+          }
+          setAlert("ok", `🏆 عبرت كل مستويات المهمة ${currentMission}! انفتحت المهمة ${Math.min(TOTAL_MISSIONS, currentMission + 1)}`);
+          setTimeout(() => {
+            if (current && tok === playToken) sayText(current.targetText, tok);
+          }, 700);
+          nextTimer = setTimeout(() => {
+            renderStagesScreen();
+          }, 2600);
         } else {
-          updateStats(false);
-          const pText = PRAISE[Math.floor(Math.random() * PRAISE.length)];
-          msgEl.style.color = "var(--ok)";
-          msgEl.textContent = `${pText} 🎉`;
-          playNotes([[660,120],[880,120],[1320,200]]);
+          const nextLvl = [1, 2, 3, 4].find(l => !set.has(l)) || (level < 4 ? level + 1 : 1);
+          setTimeout(() => {
+            if (current && tok === playToken) sayText(current.targetText, tok);
+          }, 700);
+          nextTimer = setTimeout(() => {
+            level = nextLvl;
+            updateLevelButtonsUI();
+            loadQuestion(true);
+          }, 2400);
         }
-
-        setTimeout(() => {
-          if (current && tok === playToken) sayText(current.targetText, tok);
-        }, 700);
-        nextTimer = setTimeout(() => loadQuestion(true), 2300);
       } else {
-        streak = 0;
-        updateStats(false);
         btn.classList.add("bad");
-        setAlert("bad", `⚠️ تحذير: اختيارك "${choice}" غير صحيح! ركّز وحاول مرة ثانية`);
-        msgEl.style.color = "var(--bad)";
-        msgEl.textContent = "إجابة خاطئة ❌";
-        playNotes([[300, 180], [220, 220]]);
-      }
-    }
-
-    loadQuestion(false);
-  </script>
-</body>
-</html>
+        setAlert("bad",
