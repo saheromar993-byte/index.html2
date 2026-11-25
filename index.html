@@ -340,8 +340,8 @@
       <div class="card" id="mainCard">
         <div class="stage" id="stage"></div>
         <div class="qrow">
-          <button class="q-btn" id="qBtn" onclick="playSoftTone(587, 140, 0.22)">❓🔤</button>
-          <button class="listen-btn" onclick="speakWordGentle()">🔈</button>
+          <button class="q-btn" id="qBtn" onclick="speakQuestionNow()">❓🔤</button>
+          <button class="listen-btn" onclick="speakTargetNow()">🔈</button>
         </div>
         <div class="hint" id="hint"></div>
       </div>
@@ -415,7 +415,7 @@
     document.addEventListener("touchstart", unlockAudioOnFirstTouch, { passive: true });
     document.addEventListener("pointerdown", unlockAudioOnFirstTouch, { passive: true });
 
-    function playSoftTone(freq, ms, vol = 0.22) {
+    function playSoftTone(freq, ms, vol = 0.2) {
       if (!soundOn) return;
       const ctx = getAudioCtx();
       if (!ctx) return;
@@ -436,7 +436,7 @@
       } catch (_) {}
     }
 
-    function playMelody(notes, vol = 0.22) {
+    function playMelody(notes, vol = 0.2) {
       let delay = 0;
       for (const [f, d] of notes) {
         setTimeout(() => playSoftTone(f, d, vol), delay);
@@ -479,26 +479,48 @@
       });
 
       setTimeout(() => {
-        playMelody([[523, 120], [659, 130], [784, 200]], 0.24);
+        playMelody([[523, 120], [659, 130], [784, 200]], 0.22);
       }, 520);
     }
 
-    function speakWordGentle() {
-      if (!soundOn || !current || !current.targetText) return;
-      playSoftTone(659, 120, 0.2);
-      if ("speechSynthesis" in window) {
-        try {
-          window.speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance(current.targetText);
-          const voices = window.speechSynthesis.getVoices() || [];
-          const ar = voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ar"));
-          if (ar) u.voice = ar;
-          u.lang = ar ? ar.lang : "ar-SA";
-          u.rate = 0.88;
-          u.pitch = 1.05;
-          window.speechSynthesis.speak(u);
-        } catch (_) {}
-      }
+    function pickArabicVoice() {
+      if (!("speechSynthesis" in window)) return null;
+      const voices = window.speechSynthesis.getVoices() || [];
+      return (
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ar-sa")) ||
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ar")) ||
+        null
+      );
+    }
+
+    if ("speechSynthesis" in window && typeof window.speechSynthesis.onvoiceschanged !== "undefined") {
+      window.speechSynthesis.onvoiceschanged = () => pickArabicVoice();
+    }
+
+    function speakArabic(text) {
+      if (!soundOn || !text || !("speechSynthesis" in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        const v = pickArabicVoice();
+        if (v) u.voice = v;
+        u.lang = v ? v.lang : "ar-SA";
+        u.rate = 0.9;
+        u.pitch = 1.02;
+        window.speechSynthesis.speak(u);
+      } catch (_) {}
+    }
+
+    function speakQuestionNow() {
+      if (!current) return;
+      unlockAudioOnFirstTouch();
+      speakArabic(current.questionSpoken);
+    }
+
+    function speakTargetNow() {
+      if (!current) return;
+      unlockAudioOnFirstTouch();
+      speakArabic(current.targetText);
     }
 
     function toggleSound() {
@@ -508,7 +530,7 @@
         try { window.speechSynthesis.cancel(); } catch (_) {}
       } else if (soundOn) {
         unlockAudioOnFirstTouch();
-        playSoftTone(587, 130, 0.22);
+        if (current) speakQuestionNow();
       }
     }
 
@@ -557,7 +579,6 @@
         if (isUnlocked) {
           card.onclick = () => {
             unlockAudioOnFirstTouch();
-            playSoftTone(523, 100, 0.2);
             startMission(m);
           };
         }
@@ -588,17 +609,16 @@
       document.getElementById("gameScreen").classList.add("active");
       document.getElementById("missionBadge").textContent = `مهمة ${currentMission} من ${TOTAL_MISSIONS}`;
       updateLevelButtonsUI();
-      loadQuestion();
+      loadQuestion(true);
     }
 
     function selectLevel(lvl) {
       unlockAudioOnFirstTouch();
-      playSoftTone(523, 100, 0.2);
       clearTimeout(nextTimer);
       clearInterval(countdownId);
       level = lvl;
       updateLevelButtonsUI();
-      loadQuestion();
+      loadQuestion(true);
     }
 
     function updateStats() {
@@ -639,7 +659,7 @@
       setAlert("warn", `⏰ انتهى الوقت (15 ثانية)! الجواب الصحيح: "${current.correct}"`);
       document.getElementById("msg").style.color = "var(--warn)";
       document.getElementById("msg").textContent = "سؤال جديد...";
-      nextTimer = setTimeout(() => loadQuestion(), 1900);
+      nextTimer = setTimeout(() => loadQuestion(true), 1900);
     }
 
     function shuffle(arr) {
@@ -699,6 +719,7 @@
           word,
           options: shuffle([letter, ...wrongs]),
           correct: letter,
+          questionSpoken: `بأي حرف تبدأ كلمة ${word}؟`,
           targetText: word
         };
       }
@@ -711,6 +732,7 @@
           word: "",
           options: shuffle([letter, ...wrongs]),
           correct: letter,
+          questionSpoken: "بأي حرف تبدأ هذه الصورة؟",
           targetText: word
         };
       }
@@ -727,6 +749,7 @@
           word,
           options: [...POSITIONS],
           correct,
+          questionSpoken: `أين موقع الحرف في كلمة ${word}؟`,
           targetText: word
         };
       }
@@ -739,11 +762,12 @@
         word: blankDisplay,
         options: shuffle([letter, ...wrongs]),
         correct: letter,
+        questionSpoken: "أكمل الفراغ بالحرف الناقص",
         targetText: word
       };
     }
 
-    function loadQuestion() {
+    function loadQuestion(autoSpeak = false) {
       clearTimeout(nextTimer);
       clearInterval(countdownId);
       locked = false;
@@ -783,83 +807,5 @@
       });
 
       startTimer();
-    }
-
-    function showCorrectCelebration() {
-      document.getElementById("mainCard").classList.add("win-card");
-      const stage = document.getElementById("stage");
-      stage.innerHTML = "";
-
-      const clapRow = document.createElement("div");
-      clapRow.className = "clap-banner";
-      clapRow.textContent = "👏✨👏";
-      stage.appendChild(clapRow);
-
-      if (current && current.emoji) {
-        const em = document.createElement("div");
-        em.className = "emoji-big win-bounce";
-        em.textContent = current.emoji;
-        stage.appendChild(em);
-      }
-
-      const w = document.createElement("div");
-      w.className = "word-txt win-word";
-      w.textContent = current.targetText;
-      stage.appendChild(w);
-    }
-
-    function onAnswer(choice, btn) {
-      if (locked || !current) return;
-      unlockAudioOnFirstTouch();
-
-      const msgEl = document.getElementById("msg");
-      if (choice === current.correct) {
-        locked = true;
-        clearInterval(countdownId);
-        score += 1;
-        btn.classList.add("ok");
-
-        showCorrectCelebration();
-        playGentleClap();
-
-        const set = getMissionSet(currentMission);
-        set.add(level);
-        updateLevelButtonsUI();
-        updateStats();
-
-        const pText = PRAISE[Math.floor(Math.random() * PRAISE.length)];
-        msgEl.style.color = "#15803D";
-        msgEl.textContent = `${pText} 👏🌟`;
-        setAlert("ok", `🎉 إجابة صحيحة! أحسنت يا بطل — "${current.targetText}"`);
-
-        if (set.size >= 4) {
-          stars += 1;
-          updateStats();
-          if (currentMission < TOTAL_MISSIONS && maxUnlockedMission < currentMission + 1) {
-            maxUnlockedMission = currentMission + 1;
-          }
-          setAlert("ok", `🏆 كفو! عبرت كل مستويات المهمة ${currentMission} وانفتحت المهمة ${Math.min(TOTAL_MISSIONS, currentMission + 1)}`);
-          nextTimer = setTimeout(() => {
-            renderStagesScreen();
-          }, 2300);
-        } else {
-          const nextLvl = [1, 2, 3, 4].find(l => !set.has(l)) || (level < 4 ? level + 1 : 1);
-          nextTimer = setTimeout(() => {
-            level = nextLvl;
-            updateLevelButtonsUI();
-            loadQuestion();
-          }, 2100);
-        }
-      } else {
-        btn.classList.add("bad");
-        setAlert("bad", `⚠️ تحذير: اختيارك "${choice}" غير صحيح! حاول مرة ثانية`);
-        msgEl.style.color = "var(--bad)";
-        msgEl.textContent = "إجابة خاطئة ❌";
-        playMelody([[311, 150], [233, 200]], 0.24);
-      }
-    }
-
-    renderStagesScreen();
-  </script>
-</body>
-</html>
+      if (autoSpeak) {
+        setTimeout(() => speak
