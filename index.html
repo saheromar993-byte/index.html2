@@ -16,6 +16,8 @@
       --text: #1E1B4B;
       --ok: #22C55E;
       --bad: #EF4444;
+      --warn: #D97706;
+      --warn-bg: #FEF3C7;
       --gold: #F59E0B;
       --hilite: #FEF9C3;
     }
@@ -48,6 +50,14 @@
       font-weight: 700;
       font-size: 0.9rem;
     }
+    .chip.timer-chip {
+      background: #FEF3C7;
+      color: #92400E;
+    }
+    .chip.timer-chip.urgent {
+      background: #FEE2E2;
+      color: #991B1B;
+    }
     .icon-btn {
       background: var(--primary-dark);
       color: #fff;
@@ -57,11 +67,32 @@
       font-size: 1.05rem;
       cursor: pointer;
     }
+    .stages-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      padding: 10px 14px 4px;
+    }
+    .stage-btn {
+      background: #EDE9FE;
+      color: var(--primary-dark);
+      border: 2px solid #DDD6FE;
+      border-radius: 12px;
+      padding: 7px 4px;
+      font-weight: 800;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+    .stage-btn.active {
+      background: var(--primary-dark);
+      color: #fff;
+      border-color: var(--primary-dark);
+    }
     .levels {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 6px;
-      padding: 12px 14px 8px;
+      padding: 8px 14px 8px;
     }
     .lvl-btn {
       background: #E0E7FF;
@@ -88,7 +119,7 @@
       box-shadow: 0 6px 20px rgba(79, 70, 229, 0.07);
     }
     .stage {
-      min-height: 170px;
+      min-height: 165px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -117,12 +148,37 @@
       cursor: pointer;
     }
     .hint { font-size: 0.85rem; color: #6B7280; margin-top: 6px; min-height: 18px; }
+    .alert-box {
+      display: none;
+      margin: 10px 14px 0;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      text-align: center;
+    }
+    .alert-box.show { display: block; }
+    .alert-box.bad {
+      background: #FEE2E2;
+      color: #991B1B;
+      border: 2px solid #FCA5A5;
+    }
+    .alert-box.warn {
+      background: var(--warn-bg);
+      color: #92400E;
+      border: 2px solid #FCD34D;
+    }
+    .alert-box.ok {
+      background: #DCFCE7;
+      color: #166534;
+      border: 2px solid #86EFAC;
+    }
     .msg {
       text-align: center;
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       font-weight: 800;
-      min-height: 32px;
-      margin: 10px 14px 4px;
+      min-height: 30px;
+      margin: 8px 14px 4px;
     }
     .prog-wrap {
       width: 280px;
@@ -130,7 +186,7 @@
       height: 10px;
       background: #DDD6FE;
       border-radius: 999px;
-      margin: 0 auto 14px;
+      margin: 0 auto 12px;
       overflow: hidden;
     }
     .prog-bar {
@@ -168,12 +224,20 @@
     <header>
       <div class="title">🔤 تعلّم الحروف</div>
       <div class="chips">
+        <span class="chip timer-chip" id="timerChip">⏱️ 15</span>
         <span class="chip" id="scoreChip">⭐ 0</span>
         <span class="chip" id="streakChip">🔥 0</span>
         <span class="chip" id="starsChip">🏅 0</span>
         <button class="icon-btn" id="soundBtn" onclick="toggleSound()">🔊</button>
       </div>
     </header>
+
+    <div class="stages-bar">
+      <button class="stage-btn active" data-st="1" onclick="selectStage(1)">م ١: سهل</button>
+      <button class="stage-btn" data-st="2" onclick="selectStage(2)">م ٢: متوسط</button>
+      <button class="stage-btn" data-st="3" onclick="selectStage(3)">م ٣: صعب</button>
+      <button class="stage-btn" data-st="4" onclick="selectStage(4)">م ٤: تحدي</button>
+    </div>
 
     <div class="levels">
       <button class="lvl-btn active" data-lvl="1" onclick="selectLevel(1)">١ مع الكلمة</button>
@@ -191,6 +255,7 @@
       <div class="hint" id="hint"></div>
     </div>
 
+    <div class="alert-box" id="alertBox"></div>
     <div class="msg" id="msg"></div>
     <div class="prog-wrap"><div class="prog-bar" id="progBar"></div></div>
     <div class="options" id="options"></div>
@@ -213,13 +278,23 @@
       ["ن", "نحلة", "🐝", "نون"], ["ه", "هدية", "🎁", "هاء"],
       ["و", "وردة", "🌹", "واو"], ["ي", "يد", "✋", "ياء"]
     ];
+    const SIMILAR_GROUPS = [
+      ["ب", "ت", "ث", "ن", "ي"],
+      ["ج", "ح", "خ"],
+      ["د", "ذ", "ر", "ز"],
+      ["س", "ش", "ص", "ض"],
+      ["ط", "ظ", "ع", "غ"],
+      ["ف", "ق", "ك", "ل", "م", "ه", "و", "أ"]
+    ];
     const ALL_LETTERS = new Set(DATA.map(d => d[0]));
     const HARAKAT = [["َ", "فتحة"], ["ُ", "ضمة"], ["ِ", "كسرة"]];
     const POSITIONS = ["أول", "وسط", "آخر"];
     const PRAISE = ["أحسنت!", "ممتاز!", "رائع!", "برافو!", "عظيم!"];
+    const QUESTION_SECONDS = 15;
 
-    let level = 1, score = 0, streak = 0, stars = 0, soundOn = true, locked = false;
-    let current = null, playToken = 0, nextTimer = null, speakTimer = null;
+    let stageNum = 1, level = 1, score = 0, streak = 0, stars = 0;
+    let soundOn = true, locked = false, timeLeft = QUESTION_SECONDS;
+    let current = null, playToken = 0, nextTimer = null, speakTimer = null, countdownId = null;
 
     let audioCtx = null;
     function getAudioCtx() {
@@ -291,8 +366,30 @@
       }
     }
 
+    function setAlert(type, text) {
+      const box = document.getElementById("alertBox");
+      if (!text) {
+        box.className = "alert-box";
+        box.textContent = "";
+        return;
+      }
+      box.className = `alert-box show ${type}`;
+      box.textContent = text;
+    }
+
+    function selectStage(st) {
+      clearTimeout(nextTimer);
+      clearInterval(countdownId);
+      stageNum = st;
+      document.querySelectorAll(".stage-btn").forEach(b => {
+        b.classList.toggle("active", Number(b.dataset.st) === st);
+      });
+      loadQuestion(true);
+    }
+
     function selectLevel(lvl) {
       clearTimeout(nextTimer);
+      clearInterval(countdownId);
       level = lvl;
       document.querySelectorAll(".lvl-btn").forEach(b => {
         b.classList.toggle("active", Number(b.dataset.lvl) === lvl);
@@ -306,6 +403,42 @@
       document.getElementById("starsChip").textContent = `🏅 ${stars}`;
       const pct = full ? 100 : ((score % 5) / 5) * 100;
       document.getElementById("progBar").style.width = `${pct}%`;
+    }
+
+    function updateTimerUI() {
+      const chip = document.getElementById("timerChip");
+      chip.textContent = `⏱️ ${timeLeft}`;
+      chip.classList.toggle("urgent", timeLeft <= 5);
+    }
+
+    function startTimer() {
+      clearInterval(countdownId);
+      timeLeft = QUESTION_SECONDS;
+      updateTimerUI();
+      countdownId = setInterval(() => {
+        if (locked) return;
+        timeLeft -= 1;
+        updateTimerUI();
+        if (timeLeft <= 5 && timeLeft > 0) {
+          beep(440, 60);
+        }
+        if (timeLeft <= 0) {
+          clearInterval(countdownId);
+          onTimeUp();
+        }
+      }, 1000);
+    }
+
+    function onTimeUp() {
+      if (locked || !current) return;
+      locked = true;
+      streak = 0;
+      updateStats(false);
+      playNotes([[260, 180], [210, 240]]);
+      setAlert("warn", `⏰ انتهى الوقت (15 ثانية)! الجواب الصحيح: "${current.correct}"`);
+      document.getElementById("msg").style.color = "var(--warn)";
+      document.getElementById("msg").textContent = "ننتقل للسؤال التالي...";
+      nextTimer = setTimeout(() => loadQuestion(true), 2200);
     }
 
     function clearHilite() {
@@ -328,7 +461,7 @@
           const arVoice = pickArabicVoice();
           if (arVoice) u.voice = arVoice;
           u.lang = arVoice ? arVoice.lang : "ar-SA";
-          u.rate = 0.9;
+          u.rate = 0.92;
           let done = false;
           const finish = () => {
             if (!done) {
@@ -397,28 +530,46 @@
       return copy;
     }
 
+    function pickWrongLetters(letter, count) {
+      const grp = SIMILAR_GROUPS.find(g => g.includes(letter)) || [];
+      const similarPool = DATA.filter(d => d[0] !== letter && grp.includes(d[0])).map(d => d[0]);
+      const otherPool = DATA.filter(d => d[0] !== letter && !similarPool.includes(d[0])).map(d => d[0]);
+      const chosen = [];
+      if (stageNum >= 2) {
+        for (const l of shuffle(similarPool)) {
+          if (chosen.length < count) chosen.push(l);
+        }
+      }
+      for (const l of shuffle(otherPool)) {
+        if (chosen.length < count) chosen.push(l);
+      }
+      return chosen.slice(0, count);
+    }
+
     function buildQuestion(lvl) {
+      const wrongCount = stageNum >= 4 ? 2 : 2;
       if (lvl === 1 || lvl === 2) {
         const idx = Math.floor(Math.random() * DATA.length);
         const [letter, word, emoji] = DATA[idx];
-        const pool = DATA.filter(d => d[0] !== letter);
-        const wrongs = shuffle(pool).slice(0, 2).map(d => d[0]);
+        const wrongs = pickWrongLetters(letter, wrongCount);
         const options = shuffle([letter, ...wrongs]);
         const optSpeeches = {};
         for (const o of options) {
           const found = DATA.find(d => d[0] === o);
           optSpeeches[o] = found ? found[3] : o;
         }
+        const hideWord = (lvl === 2) || (stageNum >= 3);
+        const hideEmoji = (stageNum === 4) && (lvl === 2);
         return {
           icon: "❓🔤",
-          hint: "بأي حرف تبدأ هذه الكلمة؟",
-          emoji,
-          word: lvl === 1 ? word : "؟",
+          hint: `المرحلة ${stageNum} — بأي حرف تبدأ هذه الكلمة؟`,
+          emoji: hideEmoji ? "🔤" : emoji,
+          word: hideWord ? "؟" : word,
           bigChar: "",
           options,
           correct: letter,
           optSpeeches,
-          speechTexts: lvl === 1 ? ["بأي حرف تبدأ هذه الكلمة؟", word] : ["بأي حرف تبدأ هذه الكلمة؟"],
+          speechTexts: hideWord ? ["بأي حرف تبدأ هذه الكلمة؟"] : ["بأي حرف تبدأ هذه الكلمة؟", word],
           targetText: word
         };
       }
@@ -437,16 +588,19 @@
         const letterInfo = DATA.find(d => d[0] === c);
         const letterName = letterInfo ? letterInfo[3] : c;
         const optSpeeches = { "أول": "أول", "وسط": "وسط", "آخر": "آخر" };
+        const hideWordInStage4 = stageNum === 4;
         return {
           icon: `📍 ${c}`,
-          hint: `أين موقع حرف "${c}" في الكلمة؟`,
-          emoji,
-          word,
+          hint: `المرحلة ${stageNum} — أين موقع حرف "${c}"؟`,
+          emoji: hideWordInStage4 ? "📍" : emoji,
+          word: hideWordInStage4 ? "كلمة مخفية" : word,
           bigChar: "",
           options: [...POSITIONS],
           correct,
           optSpeeches,
-          speechTexts: [`أين موقع حرف ${letterName} في الكلمة؟`, word],
+          speechTexts: hideWordInStage4
+            ? [`أين موقع حرف ${letterName} في الكلمة؟`]
+            : [`أين موقع حرف ${letterName} في الكلمة؟`, word],
           targetText: word
         };
       }
@@ -458,7 +612,7 @@
       const optSpeeches = { "فتحة": "فتحة", "ضمة": "ضمة", "كسرة": "كسرة" };
       return {
         icon: "✨❓",
-        hint: "ما اسم هذه الحركة؟",
+        hint: `المرحلة ${stageNum} — ما اسم هذه الحركة؟`,
         emoji: "",
         word: "",
         bigChar: syl,
@@ -470,12 +624,25 @@
       };
     }
 
+    function checkAutoStageUp() {
+      const targetStage = Math.min(4, 1 + Math.floor(score / 6));
+      if (targetStage > stageNum) {
+        stageNum = targetStage;
+        document.querySelectorAll(".stage-btn").forEach(b => {
+          b.classList.toggle("active", Number(b.dataset.st) === stageNum);
+        });
+        setAlert("ok", `🚀 صعدت إلى المرحلة ${stageNum}! الصعوبة زادت`);
+      }
+    }
+
     function loadQuestion(autoSpeak = false) {
       clearTimeout(nextTimer);
+      clearInterval(countdownId);
       locked = false;
       playToken++;
       stopSpeechOnly();
       clearHilite();
+      setAlert("", "");
       document.getElementById("msg").textContent = "";
       updateStats(false);
 
@@ -514,6 +681,7 @@
         optsDiv.appendChild(btn);
       });
 
+      startTimer();
       if (autoSpeak) {
         speakTimer = setTimeout(() => speakSequence(), 220);
       }
@@ -534,9 +702,11 @@
       const msgEl = document.getElementById("msg");
       if (choice === current.correct) {
         locked = true;
+        clearInterval(countdownId);
         score += 1;
         streak += 1;
         btn.classList.add("ok");
+        checkAutoStageUp();
 
         if (score % 5 === 0) {
           stars += 1;
@@ -554,15 +724,16 @@
 
         setTimeout(() => {
           if (current && tok === playToken) sayText(current.targetText, tok);
-        }, 750);
-        nextTimer = setTimeout(() => loadQuestion(true), 2400);
+        }, 700);
+        nextTimer = setTimeout(() => loadQuestion(true), 2300);
       } else {
         streak = 0;
         updateStats(false);
         btn.classList.add("bad");
+        setAlert("bad", `⚠️ تحذير: اختيارك "${choice}" غير صحيح! ركّز وحاول مرة ثانية`);
         msgEl.style.color = "var(--bad)";
-        msgEl.textContent = "حاول مرة ثانية 💪";
-        playNotes([[300, 250]]);
+        msgEl.textContent = "إجابة خاطئة ❌";
+        playNotes([[300, 180], [220, 220]]);
       }
     }
 
