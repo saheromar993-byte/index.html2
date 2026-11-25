@@ -61,7 +61,6 @@
       cursor: pointer;
     }
 
-    /* شاشة المراحل الـ 30 */
     .stages-screen { padding: 14px; }
     .screen-head {
       display: flex;
@@ -104,7 +103,6 @@
     .st-num { font-size: 1rem; }
     .st-sub { font-size: 0.72rem; margin-top: 3px; }
 
-    /* شاشة اللعب داخل المهمة */
     .game-screen { display: none; }
     .game-screen.active { display: block; }
     .stages-screen.hidden { display: none; }
@@ -301,7 +299,6 @@
       </div>
     </header>
 
-    <!-- شاشة اختيار المهمة (30 مهمة) -->
     <section class="stages-screen" id="stagesScreen">
       <div class="screen-head">
         <h2>المهام (30 مهمة)</h2>
@@ -311,7 +308,6 @@
       <div class="stages-grid" id="stagesGrid"></div>
     </section>
 
-    <!-- شاشة اللعب -->
     <section class="game-screen" id="gameScreen">
       <div class="top-subbar">
         <button class="back-btn" onclick="openStagesScreen()">← المهام</button>
@@ -362,13 +358,11 @@
       ["و", "وردة", "🌹", "واو"], ["ي", "يد", "✋", "ياء"]
     ];
     const ALL_LETTERS = new Set(DATA.map(d => d[0]));
-    const HARAKAT = [["َ", "فتحة"], ["ُ", "ضمة"], ["ِ", "كسرة"]];
     const POSITIONS = ["أول", "وسط", "آخر"];
     const PRAISE = ["أحسنت!", "ممتاز!", "رائع!", "برافو!", "عظيم!"];
 
-    // تقدم المهام: كل مهمة تحتفظ بالمستويات اللي عبرتها [1,2,3,4]
     let maxUnlockedMission = 1;
-    let passedByMission = {}; // { 1: Set([1,2]) }
+    let passedByMission = {};
     let currentMission = 1;
     let level = 1;
     let score = 0;
@@ -418,7 +412,6 @@
       }
     }
 
-    // صوت تصفيق إيقاعي لكل إجابة صحيحة
     function playClapSound() {
       if (!soundOn) return;
       const ctx = getAudioCtx();
@@ -490,7 +483,7 @@
         box.textContent = "";
         return;
       }
-      box.className = `alert-box show ${type}`;
+      box.className = "alert-box show " + type;
       box.textContent = text;
     }
 
@@ -546,7 +539,6 @@
     function startMission(m) {
       currentMission = m;
       const set = getMissionSet(m);
-      // ابدأ بأول مستوى بعده ما معبور، أو المستوى 1 إذا مكتملة
       const firstUnpassed = [1, 2, 3, 4].find(l => !set.has(l));
       level = firstUnpassed || 1;
 
@@ -700,20 +692,19 @@
       let replaced = false;
       for (let i = 0; i < chars.length; i++) {
         if (chars[i] === targetLetter && !replaced) {
-          chars[i] = "＿";
+          chars[i] = "_";
           replaced = true;
         }
       }
       if (!replaced && chars.length > 0) {
-        chars[0] = "＿";
+        chars[0] = "_";
       }
       return chars.join(" ");
     }
 
     function buildQuestion(lvl) {
-      // نختار كلمة من البيانات حسب رقم المهمة
       const idx = (currentMission - 1 + Math.floor(Math.random() * 3)) % DATA.length;
-      const [letter, word, emoji, letterName] = DATA[idx];
+      const [letter, word, emoji] = DATA[idx];
       const pool = DATA.filter(d => d[0] !== letter);
       const wrongs = shuffle(pool).slice(0, 2).map(d => d[0]);
 
@@ -780,7 +771,6 @@
         };
       }
 
-      // المستوى ٤ (الأصعب): تخمين الحرف بطريقة فراغ وحرف واحد
       const blankDisplay = makeBlankWord(word, letter);
       const options = shuffle([letter, ...wrongs]);
       const optSpeeches = {};
@@ -889,7 +879,6 @@
         score += 1;
         btn.classList.add("ok");
 
-        // إظهار الصورة مع التصفيق لكل إجابة صحيحة
         showCorrectVisualClap();
         playClapSound();
 
@@ -902,7 +891,6 @@
         msgEl.style.color = "var(--ok)";
         msgEl.textContent = `${pText} 👏🎉`;
 
-        // تحقق هل عبر جميع المستويات الـ 4 في المهمة الحالية
         if (set.size >= 4) {
           stars += 1;
           updateStats();
@@ -929,4 +917,14 @@
         }
       } else {
         btn.classList.add("bad");
-        setAlert("bad",
+        setAlert("bad", `⚠️ تحذير: اختيارك "${choice}" غير صحيح! حاول مرة ثانية`);
+        msgEl.style.color = "var(--bad)";
+        msgEl.textContent = "إجابة خاطئة ❌";
+        playNotes([[300, 180], [220, 220]]);
+      }
+    }
+
+    renderStagesScreen();
+  </script>
+</body>
+</html>
