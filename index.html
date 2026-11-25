@@ -164,7 +164,7 @@
 
     .card {
       background: #fff;
-      border: 1px solid var(--border);
+      border: 2px solid var(--border);
       border-radius: 18px;
       margin: 4px 14px 0;
       padding: 14px;
@@ -172,6 +172,13 @@
       box-shadow: 0 6px 20px rgba(79, 70, 229, 0.07);
       position: relative;
       overflow: hidden;
+      transition: background 0.25s, border-color 0.25s, transform 0.25s;
+    }
+    .card.win-card {
+      background: #F0FDF4;
+      border-color: var(--ok);
+      box-shadow: 0 10px 26px rgba(34, 197, 94, 0.22);
+      transform: scale(1.015);
     }
     .stage {
       min-height: 170px;
@@ -182,18 +189,29 @@
       gap: 8px;
     }
     .emoji-big { font-size: 4.6rem; line-height: 1.1; transition: transform 0.25s; }
-    .emoji-big.clap-anim { animation: clapPop 0.7s ease; }
-    @keyframes clapPop {
-      0% { transform: scale(0.85); }
-      50% { transform: scale(1.22); }
-      100% { transform: scale(1); }
+    .emoji-big.win-bounce { animation: winBounce 0.75s ease infinite alternate; }
+    @keyframes winBounce {
+      0% { transform: scale(1) rotate(-4deg); }
+      100% { transform: scale(1.18) rotate(4deg); }
     }
-    .char-big { font-size: 5rem; font-weight: 800; color: var(--text); line-height: 1.1; }
+    .clap-banner {
+      font-size: 1.7rem;
+      font-weight: 900;
+      color: #15803D;
+      animation: clapPulse 0.45s ease infinite alternate;
+    }
+    @keyframes clapPulse {
+      0% { transform: scale(0.96); }
+      100% { transform: scale(1.08); }
+    }
     .word-txt {
       font-size: 2.1rem;
       font-weight: 800;
       color: var(--primary);
       letter-spacing: 2px;
+    }
+    .word-txt.win-word {
+      color: #15803D;
     }
     .qrow { display: flex; justify-content: center; gap: 10px; margin-top: 8px; }
     .q-btn {
@@ -321,7 +339,7 @@
         <button class="lvl-btn" data-lvl="4" onclick="selectLevel(4)">٤ فراغ وحرف</button>
       </div>
 
-      <div class="card">
+      <div class="card" id="mainCard">
         <div class="stage" id="stage"></div>
         <div class="qrow">
           <button class="q-btn" id="qBtn" onclick="speakSequence()">❓🔤</button>
@@ -359,7 +377,7 @@
     ];
     const ALL_LETTERS = new Set(DATA.map(d => d[0]));
     const POSITIONS = ["أول", "وسط", "آخر"];
-    const PRAISE = ["أحسنت!", "ممتاز!", "رائع!", "برافو!", "عظيم!"];
+    const PRAISE = ["أحسنت يا بطل!", "ممتاز جداً!", "رائع وبطل!", "برافو عليك!", "عظيم جداً!"];
 
     let maxUnlockedMission = 1;
     let passedByMission = {};
@@ -388,13 +406,14 @@
       return audioCtx;
     }
 
-    function beep(freq, ms, vol = 0.14) {
+    function beep(freq, ms, vol = 0.12) {
       if (!soundOn) return;
       const ctx = getAudioCtx();
       if (!ctx) return;
       try {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
+        osc.type = "sine";
         osc.frequency.value = freq;
         gain.gain.value = vol;
         osc.connect(gain);
@@ -412,34 +431,44 @@
       }
     }
 
-    function playClapSound() {
+    // تصفيق لطيف وإيقاعي بدون خشخشة
+    function playCheerClap() {
       if (!soundOn) return;
       const ctx = getAudioCtx();
       if (!ctx) return;
-      const claps = [0, 120, 240, 380];
-      claps.forEach(delay => {
+      const beats = [0, 140, 280, 420, 560];
+      beats.forEach((delay, idx) => {
         setTimeout(() => {
           try {
-            const len = Math.floor(ctx.sampleRate * 0.065);
+            const len = Math.floor(ctx.sampleRate * 0.08);
             const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-            const data = buf.getChannelData(0);
+            const ch = buf.getChannelData(0);
             for (let i = 0; i < len; i++) {
-              data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.35));
+              const env = Math.pow(1 - i / len, 2.2);
+              ch[i] = (Math.random() * 2 - 1) * env * 0.45;
             }
             const src = ctx.createBufferSource();
             src.buffer = buf;
-            const filter = ctx.createBiquadFilter();
-            filter.type = "bandpass";
-            filter.frequency.value = 1800;
+
+            const lp = ctx.createBiquadFilter();
+            lp.type = "lowpass";
+            lp.frequency.value = 1350;
+
             const gain = ctx.createGain();
-            gain.gain.value = 0.35;
-            src.connect(filter);
-            filter.connect(gain);
+            gain.gain.value = idx === beats.length - 1 ? 0.5 : 0.35;
+
+            src.connect(lp);
+            lp.connect(gain);
             gain.connect(ctx.destination);
             src.start();
           } catch (_) {}
         }, delay);
       });
+
+      // نغمة تشجيع ناعمة ورا التصفيق
+      setTimeout(() => {
+        playNotes([[587, 110], [784, 140], [988, 200]]);
+      }, 650);
     }
 
     function pickArabicVoice() {
@@ -591,7 +620,7 @@
     function onTimeUp() {
       if (locked || !current) return;
       locked = true;
-      playNotes([[260, 180], [210, 240]]);
+      playNotes([[280, 170], [220, 220]]);
       setAlert("warn", `⏰ انتهى الوقت (15 ثانية)! الجواب الصحيح: "${current.correct}"`);
       document.getElementById("msg").style.color = "var(--warn)";
       document.getElementById("msg").textContent = "نعيد السؤال...";
@@ -800,6 +829,7 @@
       stopSpeechOnly();
       clearHilite();
       setAlert("", "");
+      document.getElementById("mainCard").classList.remove("win-card");
       document.getElementById("msg").textContent = "";
       updateStats();
 
@@ -817,7 +847,6 @@
       } else {
         const em = document.createElement("div");
         em.className = "emoji-big";
-        em.id = "stageEmoji";
         em.textContent = current.emoji;
         stage.appendChild(em);
         if (current.word) {
@@ -845,18 +874,26 @@
       }
     }
 
-    function showCorrectVisualClap() {
+    function showCorrectCelebration() {
+      document.getElementById("mainCard").classList.add("win-card");
       const stage = document.getElementById("stage");
       stage.innerHTML = "";
+
+      const clapRow = document.createElement("div");
+      clapRow.className = "clap-banner";
+      clapRow.textContent = "👏✨👏";
+      stage.appendChild(clapRow);
+
       if (current && current.emoji) {
         const em = document.createElement("div");
-        em.className = "emoji-big clap-anim";
+        em.className = "emoji-big win-bounce";
         em.textContent = current.emoji;
         stage.appendChild(em);
       }
+
       const w = document.createElement("div");
-      w.className = "word-txt";
-      w.textContent = `${current.targetText} 👏`;
+      w.className = "word-txt win-word";
+      w.textContent = current.targetText;
       stage.appendChild(w);
     }
 
@@ -879,8 +916,8 @@
         score += 1;
         btn.classList.add("ok");
 
-        showCorrectVisualClap();
-        playClapSound();
+        showCorrectCelebration();
+        playCheerClap();
 
         const set = getMissionSet(currentMission);
         set.add(level);
@@ -888,8 +925,9 @@
         updateStats();
 
         const pText = PRAISE[Math.floor(Math.random() * PRAISE.length)];
-        msgEl.style.color = "var(--ok)";
-        msgEl.textContent = `${pText} 👏🎉`;
+        msgEl.style.color = "#15803D";
+        msgEl.textContent = `${pText} 👏🌟`;
+        setAlert("ok", `🎉 إجابة صحيحة! أحسنت يا بطل — الكلمة هي "${current.targetText}"`);
 
         if (set.size >= 4) {
           stars += 1;
@@ -897,30 +935,30 @@
           if (currentMission < TOTAL_MISSIONS && maxUnlockedMission < currentMission + 1) {
             maxUnlockedMission = currentMission + 1;
           }
-          setAlert("ok", `🏆 عبرت كل مستويات المهمة ${currentMission}! انفتحت المهمة ${Math.min(TOTAL_MISSIONS, currentMission + 1)}`);
+          setAlert("ok", `🏆 كفو! عبرت كل مستويات المهمة ${currentMission} وانفتحت المهمة ${Math.min(TOTAL_MISSIONS, currentMission + 1)}`);
           setTimeout(() => {
             if (current && tok === playToken) sayText(current.targetText, tok);
-          }, 700);
+          }, 750);
           nextTimer = setTimeout(() => {
             renderStagesScreen();
-          }, 2600);
+          }, 2700);
         } else {
           const nextLvl = [1, 2, 3, 4].find(l => !set.has(l)) || (level < 4 ? level + 1 : 1);
           setTimeout(() => {
             if (current && tok === playToken) sayText(current.targetText, tok);
-          }, 700);
+          }, 750);
           nextTimer = setTimeout(() => {
             level = nextLvl;
             updateLevelButtonsUI();
             loadQuestion(true);
-          }, 2400);
+          }, 2500);
         }
       } else {
         btn.classList.add("bad");
         setAlert("bad", `⚠️ تحذير: اختيارك "${choice}" غير صحيح! حاول مرة ثانية`);
         msgEl.style.color = "var(--bad)";
         msgEl.textContent = "إجابة خاطئة ❌";
-        playNotes([[300, 180], [220, 220]]);
+        playNotes([[300, 170], [220, 210]]);
       }
     }
 
