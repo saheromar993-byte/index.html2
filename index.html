@@ -29,7 +29,7 @@
       justify-content: center;
       min-height: 100vh;
     }
-    .app { width: 100%; max-width: 540px; padding-bottom: 28px; }
+    .app { width: 100%; max-width: 560px; padding-bottom: 28px; }
     header {
       background: var(--primary);
       color: #fff;
@@ -131,8 +131,8 @@
 
     .levels {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
       padding: 8px 14px 8px;
     }
     .lvl-btn {
@@ -140,9 +140,10 @@
       color: var(--primary-dark);
       border: 2px solid #E0E7FF;
       border-radius: 12px;
-      padding: 8px 4px;
+      padding: 8px 3px;
       font-weight: 700;
-      font-size: 0.78rem;
+      font-size: 0.72rem;
+      line-height: 1.25;
       cursor: pointer;
     }
     .lvl-btn.active {
@@ -188,7 +189,7 @@
       gap: 8px;
     }
     .char-big {
-      font-size: 3.3rem;
+      font-size: 3.1rem;
       font-weight: 900;
       color: var(--primary-dark);
       line-height: 1.2;
@@ -298,7 +299,7 @@
       border: 2px solid var(--border);
       border-radius: 16px;
       padding: 16px 6px;
-      font-size: 1.8rem;
+      font-size: 1.85rem;
       font-weight: 800;
       cursor: pointer;
       transition: transform 0.1s, background 0.15s;
@@ -326,7 +327,7 @@
         <h2>المهمات (30 مهمة)</h2>
         <span class="chip" id="unlockedChip">مفتوحة: 1 / 30</span>
       </div>
-      <div class="sub-note">اعبر المستويات الـ 4 في كل مهمة حتى تفتح المهمة اللي بعدها.</div>
+      <div class="sub-note">اعبر الأقسام الـ 5 في كل مهمة حتى تفتح المهمة اللي بعدها.</div>
       <div class="stages-grid" id="stagesGrid"></div>
     </section>
 
@@ -341,6 +342,7 @@
         <button class="lvl-btn" data-lvl="2" onclick="selectLevel(2)">٢ بدون كلمة</button>
         <button class="lvl-btn" data-lvl="3" onclick="selectLevel(3)">٣ موقع الحرف</button>
         <button class="lvl-btn" data-lvl="4" onclick="selectLevel(4)">٤ فراغ وحرف</button>
+        <button class="lvl-btn" data-lvl="5" onclick="selectLevel(5)">٥ الحرف مع الحركة</button>
       </div>
 
       <div class="card" id="mainCard">
@@ -361,6 +363,7 @@
 
   <script>
     const TOTAL_MISSIONS = 30;
+    const TOTAL_LEVELS = 5;
     const QUESTION_SECONDS = 15;
 
     const DATA = [
@@ -584,14 +587,14 @@
       for (let m = 1; m <= TOTAL_MISSIONS; m++) {
         const isUnlocked = m <= maxUnlockedMission;
         const passedCount = getMissionSet(m).size;
-        const isDone = passedCount >= 4;
+        const isDone = passedCount >= TOTAL_LEVELS;
 
         const card = document.createElement("button");
         card.className = "st-card" + (isDone ? " done" : (!isUnlocked ? " locked" : ""));
         card.disabled = !isUnlocked;
         card.innerHTML = `
           <div class="st-num">${!isUnlocked ? "🔒" : (isDone ? "✅" : "🎯")} ${m}</div>
-          <div class="st-sub">${!isUnlocked ? "مقفول" : `${passedCount}/4`}</div>
+          <div class="st-sub">${!isUnlocked ? "مقفول" : `${passedCount}/${TOTAL_LEVELS}`}</div>
         `;
         if (isUnlocked) {
           card.onclick = () => {
@@ -619,7 +622,7 @@
     function startMission(m) {
       currentMission = m;
       const set = getMissionSet(m);
-      const firstUnpassed = [1, 2, 3, 4].find(l => !set.has(l));
+      const firstUnpassed = [1, 2, 3, 4, 5].find(l => !set.has(l));
       level = firstUnpassed || 1;
 
       const stagesEl = document.getElementById("stagesScreen");
@@ -647,7 +650,7 @@
       const passedCount = getMissionSet(currentMission).size;
       document.getElementById("scoreChip").textContent = `⭐ ${score}`;
       document.getElementById("starsChip").textContent = `🏅 ${stars}`;
-      document.getElementById("progBar").style.width = `${(passedCount / 4) * 100}%`;
+      document.getElementById("progBar").style.width = `${(passedCount / TOTAL_LEVELS) * 100}%`;
     }
 
     function updateTimerUI() {
@@ -693,7 +696,6 @@
       return copy;
     }
 
-    // يجمع كل الحروف ويعيد خلطها عشوائياً بدون تكرار فوري
     function pickRandomAllLettersIndex() {
       if (randomPoolQueue.length === 0) {
         const all = DATA.map((_, i) => i).filter(i => i !== lastItemIndex);
@@ -725,28 +727,10 @@
       const pool = DATA.filter(d => d[0] !== letter);
       const wrongs = shuffle(pool).slice(0, 2).map(d => d[0]);
 
-      // سؤال الحرف مع الحركة عشوائي ضمن الأسئلة
-      if (Math.random() < 0.34) {
-        const [mark, markName] = HARAKAT[Math.floor(Math.random() * HARAKAT.length)];
-        const correctSyl = letter + mark;
-        const wrongSyls = wrongs.map(w => w + mark);
-        return {
-          icon: "🔤✨",
-          hint: `سؤال الحرف مع الحركة: اختر الحرف بحركة (${markName})`,
-          emoji: "",
-          word: "",
-          bigChar: `حركة: ${markName}`,
-          options: shuffle([correctSyl, ...wrongSyls]),
-          correct: correctSyl,
-          questionSpoken: `اختر الحرف بحركة ${markName}`,
-          targetText: correctSyl
-        };
-      }
-
       if (lvl === 1) {
         return {
           icon: "❓🔤",
-          hint: "المستوى ١ (سهل): بأي حرف تبدأ الكلمة؟",
+          hint: "١ مع الكلمة: بأي حرف تبدأ الكلمة؟",
           emoji,
           word,
           bigChar: "",
@@ -760,7 +744,7 @@
       if (lvl === 2) {
         return {
           icon: "❓🖼️",
-          hint: "المستوى ٢: خمن الحرف من الصورة بدون كلمة",
+          hint: "٢ بدون كلمة: خمن الحرف من الصورة بدون كلمة",
           emoji,
           word: "",
           bigChar: "",
@@ -778,7 +762,7 @@
         const correct = posIdx === 0 ? POSITIONS[0] : (posIdx === word.length - 1 ? POSITIONS[2] : POSITIONS[1]);
         return {
           icon: `📍 ${c}`,
-          hint: `المستوى ٣: أين موقع حرف "${c}" في الكلمة؟`,
+          hint: `٣ موقع الحرف: أين موقع حرف "${c}" في الكلمة؟`,
           emoji,
           word,
           bigChar: "",
@@ -789,17 +773,37 @@
         };
       }
 
-      const blankDisplay = makeBlankWord(word, letter);
+      if (lvl === 4) {
+        const blankDisplay = makeBlankWord(word, letter);
+        return {
+          icon: "🧩",
+          hint: "٤ فراغ وحرف: أكمل الفراغ بحرف واحد",
+          emoji,
+          word: blankDisplay,
+          bigChar: "",
+          options: shuffle([letter, ...wrongs]),
+          correct: letter,
+          questionSpoken: "أكمل الفراغ بالحرف الناقص",
+          targetText: word
+        };
+      }
+
+      // ٥ الحرف مع الحركة: خيارات متباينة بحركات مختلفة حتى تكون واضحة ومرتبة
+      const [targetMark, targetMarkName] = HARAKAT[idx % HARAKAT.length];
+      const otherMarks = HARAKAT.filter(h => h[0] !== targetMark);
+      const correctSyl = letter + targetMark;
+      const w1 = wrongs[0] + otherMarks[0][0];
+      const w2 = wrongs[1] + otherMarks[1][0];
       return {
-        icon: "🧩",
-        hint: "المستوى ٤ (الأصعب): أكمل الفراغ بحرف واحد",
-        emoji,
-        word: blankDisplay,
-        bigChar: "",
-        options: shuffle([letter, ...wrongs]),
-        correct: letter,
-        questionSpoken: "أكمل الفراغ بالحرف الناقص",
-        targetText: word
+        icon: "🔤✨",
+        hint: `٥ الحرف مع الحركة: اختر حرف "${letter}" مع حركة (${targetMarkName})`,
+        emoji: "",
+        word: "",
+        bigChar: `حرف ${letter} • حركة ${targetMarkName}`,
+        options: shuffle([correctSyl, w1, w2]),
+        correct: correctSyl,
+        questionSpoken: `اختر حرف ${letter} بحركة ${targetMarkName}`,
+        targetText: correctSyl
       };
     }
 
@@ -903,18 +907,18 @@
         msgEl.textContent = `${pText} 👏🌟`;
         setAlert("ok", `🎉 إجابة صحيحة! أحسنت يا بطل — "${current.targetText}"`);
 
-        if (set.size >= 4) {
+        if (set.size >= TOTAL_LEVELS) {
           stars += 1;
           updateStats();
           if (currentMission < TOTAL_MISSIONS && maxUnlockedMission < currentMission + 1) {
             maxUnlockedMission = currentMission + 1;
           }
-          setAlert("ok", `🏆 كفو! عبرت كل مستويات المهمة ${currentMission} وانفتحت المهمة ${Math.min(TOTAL_MISSIONS, currentMission + 1)}`);
+          setAlert("ok", `🏆 كفو! عبرت كل أقسام المهمة ${currentMission} وانفتحت المهمة ${Math.min(TOTAL_MISSIONS, currentMission + 1)}`);
           nextTimer = setTimeout(() => {
             renderStagesScreen();
           }, 2400);
         } else {
-          const nextLvl = [1, 2, 3, 4].find(l => !set.has(l)) || (level < 4 ? level + 1 : 1);
+          const nextLvl = [1, 2, 3, 4, 5].find(l => !set.has(l)) || (level < TOTAL_LEVELS ? level + 1 : 1);
           nextTimer = setTimeout(() => {
             level = nextLvl;
             updateLevelButtonsUI();
