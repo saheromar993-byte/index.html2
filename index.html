@@ -79,7 +79,7 @@
       background: #fff;
       border: 2px solid var(--border);
       border-radius: 14px;
-      padding: 10px 4px;
+      padding: 9px 4px;
       text-align: center;
       cursor: pointer;
       font-weight: 800;
@@ -99,8 +99,11 @@
       cursor: not-allowed;
       opacity: 0.8;
     }
-    .st-num { font-size: 1rem; }
-    .st-sub { font-size: 0.72rem; margin-top: 3px; }
+    .st-num { font-size: 0.95rem; }
+    .st-syl { font-size: 1.05rem; margin-top: 2px; color: var(--primary); }
+    .st-card.done .st-syl { color: #15803D; }
+    .st-card.locked .st-syl { color: #6B7280; }
+    .st-sub { font-size: 0.7rem; margin-top: 2px; }
 
     .game-screen { display: none; }
     .game-screen.active { display: block; }
@@ -125,7 +128,7 @@
     }
     .mission-badge {
       font-weight: 800;
-      font-size: 0.92rem;
+      font-size: 0.9rem;
       color: var(--primary-dark);
     }
 
@@ -187,7 +190,16 @@
       justify-content: center;
       gap: 8px;
     }
-    .emoji-big { font-size: 4.6rem; line-height: 1.1; transition: transform 0.25s; }
+    .syl-pill {
+      background: #EEF2FF;
+      color: var(--primary-dark);
+      border: 1px solid #C7D2FE;
+      border-radius: 12px;
+      padding: 4px 12px;
+      font-size: 1.15rem;
+      font-weight: 800;
+    }
+    .emoji-big { font-size: 4.4rem; line-height: 1.1; transition: transform 0.25s; }
     .emoji-big.win-bounce { animation: winBounce 0.7s ease infinite alternate; }
     @keyframes winBounce {
       0% { transform: scale(1) rotate(-4deg); }
@@ -320,7 +332,7 @@
         <h2>المهام (30 مهمة)</h2>
         <span class="chip" id="unlockedChip">مفتوحة: 1 / 30</span>
       </div>
-      <div class="sub-note">اعبر المستويات الـ 4 في كل مهمة حتى تفتح المهمة اللي بعدها.</div>
+      <div class="sub-note">كل مرحلة بيها حرف وحركة، واعبر المستويات الـ 4 حتى تفتح المهمة اللي بعدها.</div>
       <div class="stages-grid" id="stagesGrid"></div>
     </section>
 
@@ -369,9 +381,29 @@
       ["ن", "نحلة", "🐝"], ["ه", "هدية", "🎁"], ["و", "وردة", "🌹"],
       ["ي", "يد", "✋"]
     ];
+    const HARAKAT = [
+      ["َ", "فتحة"],
+      ["ُ", "ضمة"],
+      ["ِ", "كسرة"]
+    ];
     const ALL_LETTERS = new Set(DATA.map(d => d[0]));
     const POSITIONS = ["أول", "وسط", "آخر"];
     const PRAISE = ["أحسنت يا بطل!", "ممتاز جداً!", "رائع وبطل!", "برافو عليك!", "عظيم جداً!"];
+
+    function getMissionSyllable(missionNum) {
+      const dIdx = (missionNum - 1) % DATA.length;
+      const hIdx = Math.floor((missionNum - 1) / DATA.length) % HARAKAT.length;
+      const letter = DATA[dIdx][0];
+      const [mark, markName] = HARAKAT[hIdx];
+      return {
+        dIdx,
+        letter,
+        mark,
+        markName,
+        syl: letter + mark,
+        label: `${letter + mark} (${markName})`
+      };
+    }
 
     let maxUnlockedMission = 1;
     let passedByMission = {};
@@ -383,7 +415,8 @@
     let locked = false;
     let timeLeft = QUESTION_SECONDS;
     let current = null;
-    let recentKeys = [];
+    let questionQueues = {}; // { "mission-level": [indices...] }
+    let lastItemIndex = -1;
     let nextTimer = null;
     let countdownId = null;
 
@@ -568,13 +601,15 @@
         const isUnlocked = m <= maxUnlockedMission;
         const passedCount = getMissionSet(m).size;
         const isDone = passedCount >= 4;
+        const sylInfo = getMissionSyllable(m);
 
         const card = document.createElement("button");
         card.className = "st-card" + (isDone ? " done" : (!isUnlocked ? " locked" : ""));
         card.disabled = !isUnlocked;
         card.innerHTML = `
           <div class="st-num">${!isUnlocked ? "🔒" : (isDone ? "✅" : "🎯")} ${m}</div>
-          <div class="st-sub">${!isUnlocked ? "مقفول" : `${passedCount}/4`}</div>
+          <div class="st-syl">${sylInfo.syl}</div>
+          <div class="st-sub">${!isUnlocked ? "مقفول" : `${sylInfo.markName} • ${passedCount}/4`}</div>
         `;
         if (isUnlocked) {
           card.onclick = () => {
@@ -604,10 +639,11 @@
       const set = getMissionSet(m);
       const firstUnpassed = [1, 2, 3, 4].find(l => !set.has(l));
       level = firstUnpassed || 1;
+      const sylInfo = getMissionSyllable(m);
 
       document.getElementById("stagesScreen").classList.add("hidden");
       document.getElementById("gameScreen").classList.add("active");
-      document.getElementById("missionBadge").textContent = `مهمة ${currentMission} من ${TOTAL_MISSIONS}`;
+      document.getElementById("missionBadge").textContent = `مهمة ${currentMission}: ${sylInfo.label}`;
       updateLevelButtonsUI();
       loadQuestion(true);
     }
@@ -671,24 +707,21 @@
       return copy;
     }
 
-    function pickDiverseItem(lvl) {
-      const baseIndex = (currentMission * 3 + level * 5 + score) % DATA.length;
-      const candidates = [];
-      for (let offset = 0; offset < DATA.length; offset++) {
-        const idx = (baseIndex + offset * 7) % DATA.length;
-        const key = `${lvl}-${idx}`;
-        if (!recentKeys.includes(key)) {
-          candidates.push(idx);
-        }
+    // اختيار بدون تكرار عبر طابور مخلّط لكل مرحلة ومستوى
+    function pickNextItemIndex(m, lvl) {
+      const sylInfo = getMissionSyllable(m);
+      const qKey = `${m}-${lvl}`;
+      if (!questionQueues[qKey] || questionQueues[qKey].length === 0) {
+        const indices = DATA.map((_, i) => i).filter(i => i !== lastItemIndex);
+        const shuffled = shuffle(indices);
+        // نضع حرف المهمة الحالية بالمقدمة لربط المرحلة بحرفها وحركتها
+        const missionIdx = sylInfo.dIdx;
+        const filtered = shuffled.filter(i => i !== missionIdx);
+        questionQueues[qKey] = [missionIdx, ...filtered];
       }
-      const chosenIdx = candidates.length
-        ? candidates[Math.floor(Math.random() * Math.min(4, candidates.length))]
-        : ((baseIndex + Math.floor(Math.random() * DATA.length)) % DATA.length);
-
-      const qKey = `${lvl}-${chosenIdx}`;
-      recentKeys.push(qKey);
-      if (recentKeys.length > 14) recentKeys.shift();
-      return DATA[chosenIdx];
+      const chosen = questionQueues[qKey].shift();
+      lastItemIndex = chosen;
+      return chosen;
     }
 
     function makeBlankWord(word, targetLetter) {
@@ -707,14 +740,17 @@
     }
 
     function buildQuestion(lvl) {
-      const [letter, word, emoji] = pickDiverseItem(lvl);
+      const sylInfo = getMissionSyllable(currentMission);
+      const idx = pickNextItemIndex(currentMission, lvl);
+      const [letter, word, emoji] = DATA[idx];
       const pool = DATA.filter(d => d[0] !== letter);
       const wrongs = shuffle(pool).slice(0, 2).map(d => d[0]);
 
       if (lvl === 1) {
         return {
           icon: "❓🔤",
-          hint: "المستوى ١ (سهل): بأي حرف تبدأ الكلمة؟",
+          sylBadge: `${sylInfo.syl} • ${sylInfo.markName}`,
+          hint: `المستوى ١: بأي حرف تبدأ الكلمة؟ (حرف المهمة: ${sylInfo.label})`,
           emoji,
           word,
           options: shuffle([letter, ...wrongs]),
@@ -727,7 +763,8 @@
       if (lvl === 2) {
         return {
           icon: "❓🖼️",
-          hint: "المستوى ٢: خمن الحرف من الصورة بدون كلمة",
+          sylBadge: `${sylInfo.syl} • ${sylInfo.markName}`,
+          hint: `المستوى ٢: خمن الحرف من الصورة (حرف المهمة: ${sylInfo.label})`,
           emoji,
           word: "",
           options: shuffle([letter, ...wrongs]),
@@ -744,6 +781,7 @@
         const correct = posIdx === 0 ? POSITIONS[0] : (posIdx === word.length - 1 ? POSITIONS[2] : POSITIONS[1]);
         return {
           icon: `📍 ${c}`,
+          sylBadge: `${sylInfo.syl} • ${sylInfo.markName}`,
           hint: `المستوى ٣: أين موقع حرف "${c}" في الكلمة؟`,
           emoji,
           word,
@@ -757,7 +795,8 @@
       const blankDisplay = makeBlankWord(word, letter);
       return {
         icon: "🧩",
-        hint: "المستوى ٤ (الأصعب): أكمل الفراغ بحرف واحد",
+        sylBadge: `${sylInfo.syl} • ${sylInfo.markName}`,
+        hint: `المستوى ٤ (الأصعب): أكمل الفراغ بحرف واحد (${sylInfo.label})`,
         emoji,
         word: blankDisplay,
         options: shuffle([letter, ...wrongs]),
@@ -782,6 +821,11 @@
 
       const stage = document.getElementById("stage");
       stage.innerHTML = "";
+
+      const pill = document.createElement("div");
+      pill.className = "syl-pill";
+      pill.textContent = current.sylBadge;
+      stage.appendChild(pill);
 
       const em = document.createElement("div");
       em.className = "emoji-big";
