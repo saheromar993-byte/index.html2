@@ -79,7 +79,7 @@
       background: #fff;
       border: 2px solid var(--border);
       border-radius: 14px;
-      padding: 9px 4px;
+      padding: 10px 4px;
       text-align: center;
       cursor: pointer;
       font-weight: 800;
@@ -99,11 +99,8 @@
       cursor: not-allowed;
       opacity: 0.8;
     }
-    .st-num { font-size: 0.95rem; }
-    .st-syl { font-size: 1.05rem; margin-top: 2px; color: var(--primary); }
-    .st-card.done .st-syl { color: #15803D; }
-    .st-card.locked .st-syl { color: #6B7280; }
-    .st-sub { font-size: 0.7rem; margin-top: 2px; }
+    .st-num { font-size: 1rem; }
+    .st-sub { font-size: 0.72rem; margin-top: 3px; }
 
     .game-screen { display: none; }
     .game-screen.active { display: block; }
@@ -128,7 +125,7 @@
     }
     .mission-badge {
       font-weight: 800;
-      font-size: 0.9rem;
+      font-size: 0.92rem;
       color: var(--primary-dark);
     }
 
@@ -190,16 +187,13 @@
       justify-content: center;
       gap: 8px;
     }
-    .syl-pill {
-      background: #EEF2FF;
+    .char-big {
+      font-size: 4.5rem;
+      font-weight: 900;
       color: var(--primary-dark);
-      border: 1px solid #C7D2FE;
-      border-radius: 12px;
-      padding: 4px 12px;
-      font-size: 1.15rem;
-      font-weight: 800;
+      line-height: 1.15;
     }
-    .emoji-big { font-size: 4.4rem; line-height: 1.1; transition: transform 0.25s; }
+    .emoji-big { font-size: 4.6rem; line-height: 1.1; transition: transform 0.25s; }
     .emoji-big.win-bounce { animation: winBounce 0.7s ease infinite alternate; }
     @keyframes winBounce {
       0% { transform: scale(1) rotate(-4deg); }
@@ -332,7 +326,7 @@
         <h2>المهام (30 مهمة)</h2>
         <span class="chip" id="unlockedChip">مفتوحة: 1 / 30</span>
       </div>
-      <div class="sub-note">كل مرحلة بيها حرف وحركة، واعبر المستويات الـ 4 حتى تفتح المهمة اللي بعدها.</div>
+      <div class="sub-note">اعبر المستويات الـ 4 في كل مهمة حتى تفتح المهمة اللي بعدها.</div>
       <div class="stages-grid" id="stagesGrid"></div>
     </section>
 
@@ -390,21 +384,6 @@
     const POSITIONS = ["أول", "وسط", "آخر"];
     const PRAISE = ["أحسنت يا بطل!", "ممتاز جداً!", "رائع وبطل!", "برافو عليك!", "عظيم جداً!"];
 
-    function getMissionSyllable(missionNum) {
-      const dIdx = (missionNum - 1) % DATA.length;
-      const hIdx = Math.floor((missionNum - 1) / DATA.length) % HARAKAT.length;
-      const letter = DATA[dIdx][0];
-      const [mark, markName] = HARAKAT[hIdx];
-      return {
-        dIdx,
-        letter,
-        mark,
-        markName,
-        syl: letter + mark,
-        label: `${letter + mark} (${markName})`
-      };
-    }
-
     let maxUnlockedMission = 1;
     let passedByMission = {};
     let currentMission = 1;
@@ -415,7 +394,7 @@
     let locked = false;
     let timeLeft = QUESTION_SECONDS;
     let current = null;
-    let questionQueues = {}; // { "mission-level": [indices...] }
+    let questionQueues = {};
     let lastItemIndex = -1;
     let nextTimer = null;
     let countdownId = null;
@@ -454,484 +433,4 @@
       if (!ctx) return;
       try {
         const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(freq, ctx.currentTime);
-        const now = ctx.currentTime;
-        const dur = Math.max(0.08, ms / 1000);
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(vol, now + 0.015);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + dur + 0.02);
-      } catch (_) {}
-    }
-
-    function playMelody(notes, vol = 0.22) {
-      let delay = 0;
-      for (const [f, d] of notes) {
-        setTimeout(() => playSoftTone(f, d, vol), delay);
-        delay += d + 30;
-      }
-    }
-
-    function playGentleClap() {
-      if (!soundOn) return;
-      const ctx = getAudioCtx();
-      if (!ctx) return;
-      const beats = [0, 140, 280, 420];
-      beats.forEach((delay, idx) => {
-        setTimeout(() => {
-          try {
-            const len = Math.floor(ctx.sampleRate * 0.07);
-            const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-            const ch = buf.getChannelData(0);
-            for (let i = 0; i < len; i++) {
-              const env = Math.pow(1 - i / len, 2.2);
-              ch[i] = (Math.random() * 2 - 1) * env * 0.55;
-            }
-            const src = ctx.createBufferSource();
-            src.buffer = buf;
-
-            const bp = ctx.createBiquadFilter();
-            bp.type = "bandpass";
-            bp.frequency.value = 1250;
-            bp.Q.value = 1.0;
-
-            const gain = ctx.createGain();
-            gain.gain.value = idx === beats.length - 1 ? 0.65 : 0.45;
-
-            src.connect(bp);
-            bp.connect(gain);
-            gain.connect(ctx.destination);
-            src.start();
-          } catch (_) {}
-        }, delay);
-      });
-
-      setTimeout(() => {
-        playMelody([[523, 120], [659, 130], [784, 200]], 0.24);
-      }, 520);
-    }
-
-    function pickArabicVoice() {
-      if (!("speechSynthesis" in window)) return null;
-      const voices = window.speechSynthesis.getVoices() || [];
-      return (
-        voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ar-sa")) ||
-        voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ar")) ||
-        null
-      );
-    }
-
-    if ("speechSynthesis" in window && typeof window.speechSynthesis.onvoiceschanged !== "undefined") {
-      window.speechSynthesis.onvoiceschanged = () => pickArabicVoice();
-    }
-
-    function speakArabic(text) {
-      if (!soundOn || !text || !("speechSynthesis" in window)) return;
-      try {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        const v = pickArabicVoice();
-        if (v) u.voice = v;
-        u.lang = v ? v.lang : "ar-SA";
-        u.rate = 0.9;
-        u.pitch = 1.02;
-        window.speechSynthesis.speak(u);
-      } catch (_) {}
-    }
-
-    function speakQuestionNow() {
-      if (!current) return;
-      unlockAudioOnFirstTouch();
-      speakArabic(current.questionSpoken);
-    }
-
-    function speakTargetNow() {
-      if (!current) return;
-      unlockAudioOnFirstTouch();
-      speakArabic(current.targetText);
-    }
-
-    function toggleSound() {
-      soundOn = !soundOn;
-      document.getElementById("soundBtn").textContent = soundOn ? "🔊" : "🔇";
-      if (!soundOn && "speechSynthesis" in window) {
-        try { window.speechSynthesis.cancel(); } catch (_) {}
-      } else if (soundOn) {
-        unlockAudioOnFirstTouch();
-        if (current) speakQuestionNow();
-      }
-    }
-
-    function setAlert(type, text) {
-      const box = document.getElementById("alertBox");
-      if (!text) {
-        box.className = "alert-box";
-        box.textContent = "";
-        return;
-      }
-      box.className = "alert-box show " + type;
-      box.textContent = text;
-    }
-
-    function getMissionSet(m) {
-      if (!passedByMission[m]) passedByMission[m] = new Set();
-      return passedByMission[m];
-    }
-
-    function renderStagesScreen() {
-      clearInterval(countdownId);
-      clearTimeout(nextTimer);
-      if ("speechSynthesis" in window) {
-        try { window.speechSynthesis.cancel(); } catch (_) {}
-      }
-
-      document.getElementById("stagesScreen").classList.remove("hidden");
-      document.getElementById("gameScreen").classList.remove("active");
-      document.getElementById("unlockedChip").textContent = `مفتوحة: ${maxUnlockedMission} / ${TOTAL_MISSIONS}`;
-
-      const grid = document.getElementById("stagesGrid");
-      grid.innerHTML = "";
-
-      for (let m = 1; m <= TOTAL_MISSIONS; m++) {
-        const isUnlocked = m <= maxUnlockedMission;
-        const passedCount = getMissionSet(m).size;
-        const isDone = passedCount >= 4;
-        const sylInfo = getMissionSyllable(m);
-
-        const card = document.createElement("button");
-        card.className = "st-card" + (isDone ? " done" : (!isUnlocked ? " locked" : ""));
-        card.disabled = !isUnlocked;
-        card.innerHTML = `
-          <div class="st-num">${!isUnlocked ? "🔒" : (isDone ? "✅" : "🎯")} ${m}</div>
-          <div class="st-syl">${sylInfo.syl}</div>
-          <div class="st-sub">${!isUnlocked ? "مقفول" : `${sylInfo.markName} • ${passedCount}/4`}</div>
-        `;
-        if (isUnlocked) {
-          card.onclick = () => {
-            unlockAudioOnFirstTouch();
-            startMission(m);
-          };
-        }
-        grid.appendChild(card);
-      }
-    }
-
-    function openStagesScreen() {
-      renderStagesScreen();
-    }
-
-    function updateLevelButtonsUI() {
-      const set = getMissionSet(currentMission);
-      document.querySelectorAll(".lvl-btn").forEach(b => {
-        const l = Number(b.dataset.lvl);
-        b.classList.toggle("active", l === level);
-        b.classList.toggle("passed", set.has(l));
-      });
-    }
-
-    function startMission(m) {
-      currentMission = m;
-      const set = getMissionSet(m);
-      const firstUnpassed = [1, 2, 3, 4].find(l => !set.has(l));
-      level = firstUnpassed || 1;
-      const sylInfo = getMissionSyllable(m);
-
-      document.getElementById("stagesScreen").classList.add("hidden");
-      document.getElementById("gameScreen").classList.add("active");
-      document.getElementById("missionBadge").textContent = `مهمة ${currentMission}: ${sylInfo.label}`;
-      updateLevelButtonsUI();
-      loadQuestion(true);
-    }
-
-    function selectLevel(lvl) {
-      unlockAudioOnFirstTouch();
-      clearTimeout(nextTimer);
-      clearInterval(countdownId);
-      level = lvl;
-      updateLevelButtonsUI();
-      loadQuestion(true);
-    }
-
-    function updateStats() {
-      const passedCount = getMissionSet(currentMission).size;
-      document.getElementById("scoreChip").textContent = `⭐ ${score}`;
-      document.getElementById("starsChip").textContent = `🏅 ${stars}`;
-      document.getElementById("progBar").style.width = `${(passedCount / 4) * 100}%`;
-    }
-
-    function updateTimerUI() {
-      const chip = document.getElementById("timerChip");
-      chip.textContent = `⏱️ ${timeLeft}`;
-      chip.classList.toggle("urgent", timeLeft <= 5);
-    }
-
-    function startTimer() {
-      clearInterval(countdownId);
-      timeLeft = QUESTION_SECONDS;
-      updateTimerUI();
-      countdownId = setInterval(() => {
-        if (locked) return;
-        timeLeft -= 1;
-        updateTimerUI();
-        if (timeLeft <= 5 && timeLeft > 0) {
-          playSoftTone(440, 80, 0.14);
-        }
-        if (timeLeft <= 0) {
-          clearInterval(countdownId);
-          onTimeUp();
-        }
-      }, 1000);
-    }
-
-    function onTimeUp() {
-      if (locked || !current) return;
-      locked = true;
-      playMelody([[330, 150], [262, 200]], 0.22);
-      setAlert("warn", `⏰ انتهى الوقت (15 ثانية)! الجواب الصحيح: "${current.correct}"`);
-      document.getElementById("msg").style.color = "var(--warn)";
-      document.getElementById("msg").textContent = "سؤال جديد...";
-      nextTimer = setTimeout(() => loadQuestion(true), 1900);
-    }
-
-    function shuffle(arr) {
-      const copy = [...arr];
-      for (let i = copy.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copy[i], copy[j]] = [copy[j], copy[i]];
-      }
-      return copy;
-    }
-
-    // اختيار بدون تكرار عبر طابور مخلّط لكل مرحلة ومستوى
-    function pickNextItemIndex(m, lvl) {
-      const sylInfo = getMissionSyllable(m);
-      const qKey = `${m}-${lvl}`;
-      if (!questionQueues[qKey] || questionQueues[qKey].length === 0) {
-        const indices = DATA.map((_, i) => i).filter(i => i !== lastItemIndex);
-        const shuffled = shuffle(indices);
-        // نضع حرف المهمة الحالية بالمقدمة لربط المرحلة بحرفها وحركتها
-        const missionIdx = sylInfo.dIdx;
-        const filtered = shuffled.filter(i => i !== missionIdx);
-        questionQueues[qKey] = [missionIdx, ...filtered];
-      }
-      const chosen = questionQueues[qKey].shift();
-      lastItemIndex = chosen;
-      return chosen;
-    }
-
-    function makeBlankWord(word, targetLetter) {
-      const chars = [...word];
-      let replaced = false;
-      for (let i = 0; i < chars.length; i++) {
-        if (chars[i] === targetLetter && !replaced) {
-          chars[i] = "_";
-          replaced = true;
-        }
-      }
-      if (!replaced && chars.length > 0) {
-        chars[0] = "_";
-      }
-      return chars.join(" ");
-    }
-
-    function buildQuestion(lvl) {
-      const sylInfo = getMissionSyllable(currentMission);
-      const idx = pickNextItemIndex(currentMission, lvl);
-      const [letter, word, emoji] = DATA[idx];
-      const pool = DATA.filter(d => d[0] !== letter);
-      const wrongs = shuffle(pool).slice(0, 2).map(d => d[0]);
-
-      if (lvl === 1) {
-        return {
-          icon: "❓🔤",
-          sylBadge: `${sylInfo.syl} • ${sylInfo.markName}`,
-          hint: `المستوى ١: بأي حرف تبدأ الكلمة؟ (حرف المهمة: ${sylInfo.label})`,
-          emoji,
-          word,
-          options: shuffle([letter, ...wrongs]),
-          correct: letter,
-          questionSpoken: `بأي حرف تبدأ كلمة ${word}؟`,
-          targetText: word
-        };
-      }
-
-      if (lvl === 2) {
-        return {
-          icon: "❓🖼️",
-          sylBadge: `${sylInfo.syl} • ${sylInfo.markName}`,
-          hint: `المستوى ٢: خمن الحرف من الصورة (حرف المهمة: ${sylInfo.label})`,
-          emoji,
-          word: "",
-          options: shuffle([letter, ...wrongs]),
-          correct: letter,
-          questionSpoken: "بأي حرف تبدأ هذه الصورة؟",
-          targetText: word
-        };
-      }
-
-      if (lvl === 3) {
-        const cands = [...word].filter(c => ALL_LETTERS.has(c) && word.split(c).length - 1 === 1);
-        const c = cands.length ? cands[0] : letter;
-        const posIdx = word.indexOf(c);
-        const correct = posIdx === 0 ? POSITIONS[0] : (posIdx === word.length - 1 ? POSITIONS[2] : POSITIONS[1]);
-        return {
-          icon: `📍 ${c}`,
-          sylBadge: `${sylInfo.syl} • ${sylInfo.markName}`,
-          hint: `المستوى ٣: أين موقع حرف "${c}" في الكلمة؟`,
-          emoji,
-          word,
-          options: [...POSITIONS],
-          correct,
-          questionSpoken: `أين موقع الحرف في كلمة ${word}؟`,
-          targetText: word
-        };
-      }
-
-      const blankDisplay = makeBlankWord(word, letter);
-      return {
-        icon: "🧩",
-        sylBadge: `${sylInfo.syl} • ${sylInfo.markName}`,
-        hint: `المستوى ٤ (الأصعب): أكمل الفراغ بحرف واحد (${sylInfo.label})`,
-        emoji,
-        word: blankDisplay,
-        options: shuffle([letter, ...wrongs]),
-        correct: letter,
-        questionSpoken: "أكمل الفراغ بالحرف الناقص",
-        targetText: word
-      };
-    }
-
-    function loadQuestion(autoSpeak = false) {
-      clearTimeout(nextTimer);
-      clearInterval(countdownId);
-      locked = false;
-      setAlert("", "");
-      document.getElementById("mainCard").classList.remove("win-card");
-      document.getElementById("msg").textContent = "";
-      updateStats();
-
-      current = buildQuestion(level);
-      document.getElementById("qBtn").textContent = current.icon;
-      document.getElementById("hint").textContent = current.hint;
-
-      const stage = document.getElementById("stage");
-      stage.innerHTML = "";
-
-      const pill = document.createElement("div");
-      pill.className = "syl-pill";
-      pill.textContent = current.sylBadge;
-      stage.appendChild(pill);
-
-      const em = document.createElement("div");
-      em.className = "emoji-big";
-      em.textContent = current.emoji;
-      stage.appendChild(em);
-
-      if (current.word) {
-        const w = document.createElement("div");
-        w.className = "word-txt";
-        w.textContent = current.word;
-        stage.appendChild(w);
-      }
-
-      const optsDiv = document.getElementById("options");
-      optsDiv.innerHTML = "";
-      const isTextOpt = (level === 3);
-      current.options.forEach(opt => {
-        const btn = document.createElement("button");
-        btn.className = "opt-btn" + (isTextOpt ? " text-opt" : "");
-        btn.textContent = opt;
-        btn.onclick = () => onAnswer(opt, btn);
-        optsDiv.appendChild(btn);
-      });
-
-      startTimer();
-      if (autoSpeak) {
-        setTimeout(() => speakArabic(current.questionSpoken), 180);
-      }
-    }
-
-    function showCorrectCelebration() {
-      document.getElementById("mainCard").classList.add("win-card");
-      const stage = document.getElementById("stage");
-      stage.innerHTML = "";
-
-      const clapRow = document.createElement("div");
-      clapRow.className = "clap-banner";
-      clapRow.textContent = "👏✨👏";
-      stage.appendChild(clapRow);
-
-      if (current && current.emoji) {
-        const em = document.createElement("div");
-        em.className = "emoji-big win-bounce";
-        em.textContent = current.emoji;
-        stage.appendChild(em);
-      }
-
-      const w = document.createElement("div");
-      w.className = "word-txt win-word";
-      w.textContent = current.targetText;
-      stage.appendChild(w);
-    }
-
-    function onAnswer(choice, btn) {
-      if (locked || !current) return;
-      unlockAudioOnFirstTouch();
-
-      const msgEl = document.getElementById("msg");
-      if (choice === current.correct) {
-        locked = true;
-        clearInterval(countdownId);
-        score += 1;
-        btn.classList.add("ok");
-
-        showCorrectCelebration();
-        playGentleClap();
-        setTimeout(() => speakArabic(current.targetText), 650);
-
-        const set = getMissionSet(currentMission);
-        set.add(level);
-        updateLevelButtonsUI();
-        updateStats();
-
-        const pText = PRAISE[Math.floor(Math.random() * PRAISE.length)];
-        msgEl.style.color = "#15803D";
-        msgEl.textContent = `${pText} 👏🌟`;
-        setAlert("ok", `🎉 إجابة صحيحة! أحسنت يا بطل — "${current.targetText}"`);
-
-        if (set.size >= 4) {
-          stars += 1;
-          updateStats();
-          if (currentMission < TOTAL_MISSIONS && maxUnlockedMission < currentMission + 1) {
-            maxUnlockedMission = currentMission + 1;
-          }
-          setAlert("ok", `🏆 كفو! عبرت كل مستويات المهمة ${currentMission} وانفتحت المهمة ${Math.min(TOTAL_MISSIONS, currentMission + 1)}`);
-          nextTimer = setTimeout(() => {
-            renderStagesScreen();
-          }, 2400);
-        } else {
-          const nextLvl = [1, 2, 3, 4].find(l => !set.has(l)) || (level < 4 ? level + 1 : 1);
-          nextTimer = setTimeout(() => {
-            level = nextLvl;
-            updateLevelButtonsUI();
-            loadQuestion(true);
-          }, 2200);
-        }
-      } else {
-        btn.classList.add("bad");
-        setAlert("bad", `⚠️ تحذير: اختيارك "${choice}" غير صحيح! حاول مرة ثانية`);
-        msgEl.style.color = "var(--bad)";
-        msgEl.textContent = "إجابة خاطئة ❌";
-        playMelody([[311, 150], [233, 200]], 0.24);
-      }
-    }
-
-    renderStagesScreen();
-  </script>
-</body>
-</html>
+        const gain = ctx.create
