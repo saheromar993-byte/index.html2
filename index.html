@@ -60,7 +60,8 @@
       cursor: pointer;
     }
 
-    .stages-screen { padding: 14px; }
+    .stages-screen { padding: 14px; display: block; }
+    .stages-screen.hidden { display: none; }
     .screen-head {
       display: flex;
       align-items: center;
@@ -104,7 +105,6 @@
 
     .game-screen { display: none; }
     .game-screen.active { display: block; }
-    .stages-screen.hidden { display: none; }
 
     .top-subbar {
       display: flex;
@@ -188,10 +188,10 @@
       gap: 8px;
     }
     .char-big {
-      font-size: 4.5rem;
+      font-size: 3.4rem;
       font-weight: 900;
       color: var(--primary-dark);
-      line-height: 1.15;
+      line-height: 1.2;
     }
     .emoji-big { font-size: 4.6rem; line-height: 1.1; transition: transform 0.25s; }
     .emoji-big.win-bounce { animation: winBounce 0.7s ease infinite alternate; }
@@ -433,4 +433,176 @@
       if (!ctx) return;
       try {
         const osc = ctx.createOscillator();
-        const gain = ctx.create
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        const now = ctx.currentTime;
+        const dur = Math.max(0.08, ms / 1000);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(vol, now + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + dur + 0.02);
+      } catch (_) {}
+    }
+
+    function playMelody(notes, vol = 0.22) {
+      let delay = 0;
+      for (const [f, d] of notes) {
+        setTimeout(() => playSoftTone(f, d, vol), delay);
+        delay += d + 30;
+      }
+    }
+
+    function playGentleClap() {
+      if (!soundOn) return;
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const beats = [0, 140, 280, 420];
+      beats.forEach((delay, idx) => {
+        setTimeout(() => {
+          try {
+            const len = Math.floor(ctx.sampleRate * 0.07);
+            const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+            const ch = buf.getChannelData(0);
+            for (let i = 0; i < len; i++) {
+              const env = Math.pow(1 - i / len, 2.2);
+              ch[i] = (Math.random() * 2 - 1) * env * 0.55;
+            }
+            const src = ctx.createBufferSource();
+            src.buffer = buf;
+
+            const bp = ctx.createBiquadFilter();
+            bp.type = "bandpass";
+            bp.frequency.value = 1250;
+            bp.Q.value = 1.0;
+
+            const gain = ctx.createGain();
+            gain.gain.value = idx === beats.length - 1 ? 0.65 : 0.45;
+
+            src.connect(bp);
+            bp.connect(gain);
+            gain.connect(ctx.destination);
+            src.start();
+          } catch (_) {}
+        }, delay);
+      });
+
+      setTimeout(() => {
+        playMelody([[523, 120], [659, 130], [784, 200]], 0.24);
+      }, 520);
+    }
+
+    function pickArabicVoice() {
+      if (!("speechSynthesis" in window)) return null;
+      const voices = window.speechSynthesis.getVoices() || [];
+      return (
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ar-sa")) ||
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ar")) ||
+        null
+      );
+    }
+
+    if ("speechSynthesis" in window && typeof window.speechSynthesis.onvoiceschanged !== "undefined") {
+      window.speechSynthesis.onvoiceschanged = () => pickArabicVoice();
+    }
+
+    function speakArabic(text) {
+      if (!soundOn || !text || !("speechSynthesis" in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        const v = pickArabicVoice();
+        if (v) u.voice = v;
+        u.lang = v ? v.lang : "ar-SA";
+        u.rate = 0.9;
+        u.pitch = 1.02;
+        window.speechSynthesis.speak(u);
+      } catch (_) {}
+    }
+
+    function speakQuestionNow() {
+      if (!current) return;
+      unlockAudioOnFirstTouch();
+      speakArabic(current.questionSpoken);
+    }
+
+    function speakTargetNow() {
+      if (!current) return;
+      unlockAudioOnFirstTouch();
+      speakArabic(current.targetText);
+    }
+
+    function toggleSound() {
+      soundOn = !soundOn;
+      document.getElementById("soundBtn").textContent = soundOn ? "🔊" : "🔇";
+      if (!soundOn && "speechSynthesis" in window) {
+        try { window.speechSynthesis.cancel(); } catch (_) {}
+      } else if (soundOn) {
+        unlockAudioOnFirstTouch();
+        if (current) speakQuestionNow();
+      }
+    }
+
+    function setAlert(type, text) {
+      const box = document.getElementById("alertBox");
+      if (!text) {
+        box.className = "alert-box";
+        box.textContent = "";
+        return;
+      }
+      box.className = "alert-box show " + type;
+      box.textContent = text;
+    }
+
+    function getMissionSet(m) {
+      if (!passedByMission[m]) passedByMission[m] = new Set();
+      return passedByMission[m];
+    }
+
+    function renderStagesScreen() {
+      clearInterval(countdownId);
+      clearTimeout(nextTimer);
+      if ("speechSynthesis" in window) {
+        try { window.speechSynthesis.cancel(); } catch (_) {}
+      }
+
+      const stagesEl = document.getElementById("stagesScreen");
+      const gameEl = document.getElementById("gameScreen");
+      stagesEl.classList.remove("hidden");
+      stagesEl.style.display = "block";
+      gameEl.classList.remove("active");
+      gameEl.style.display = "none";
+
+      document.getElementById("unlockedChip").textContent = `مفتوحة: ${maxUnlockedMission} / ${TOTAL_MISSIONS}`;
+
+      const grid = document.getElementById("stagesGrid");
+      grid.innerHTML = "";
+
+      for (let m = 1; m <= TOTAL_MISSIONS; m++) {
+        const isUnlocked = m <= maxUnlockedMission;
+        const passedCount = getMissionSet(m).size;
+        const isDone = passedCount >= 4;
+
+        const card = document.createElement("button");
+        card.className = "st-card" + (isDone ? " done" : (!isUnlocked ? " locked" : ""));
+        card.disabled = !isUnlocked;
+        card.innerHTML = `
+          <div class="st-num">${!isUnlocked ? "🔒" : (isDone ? "✅" : "🎯")} ${m}</div>
+          <div class="st-sub">${!isUnlocked ? "مقفول" : `${passedCount}/4`}</div>
+        `;
+        if (isUnlocked) {
+          card.onclick = () => {
+            unlockAudioOnFirstTouch();
+            startMission(m);
+          };
+        }
+        grid.appendChild(card);
+      }
+    }
+
+    function openStagesScreen() {
+      renderStagesScreen();
+    }
