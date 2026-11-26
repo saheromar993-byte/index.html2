@@ -189,7 +189,7 @@
       gap: 8px;
     }
     .char-big {
-      font-size: 3.1rem;
+      font-size: 4.5rem;
       font-weight: 900;
       color: var(--primary-dark);
       line-height: 1.2;
@@ -299,7 +299,7 @@
       border: 2px solid var(--border);
       border-radius: 16px;
       padding: 16px 6px;
-      font-size: 1.85rem;
+      font-size: 1.9rem;
       font-weight: 800;
       cursor: pointer;
       transition: transform 0.1s, background 0.15s;
@@ -788,19 +788,18 @@
         };
       }
 
-      // ٥ الحرف مع الحركة: خيارات متباينة بحركات مختلفة حتى تكون واضحة ومرتبة
+      // ٥ الحرف مع الحركة: نعرض الحرف المجرد فقط ونطلب اختيار الشكل الصحيح بحركة (بدون إظهار اسم الحركة في النص)
       const [targetMark, targetMarkName] = HARAKAT[idx % HARAKAT.length];
-      const otherMarks = HARAKAT.filter(h => h[0] !== targetMark);
       const correctSyl = letter + targetMark;
-      const w1 = wrongs[0] + otherMarks[0][0];
-      const w2 = wrongs[1] + otherMarks[1][0];
+      const otherMarks = HARAKAT.filter(h => h[0] !== targetMark);
+      const allForms = HARAKAT.map(h => letter + h[0]);
       return {
         icon: "🔤✨",
-        hint: `٥ الحرف مع الحركة: اختر حرف "${letter}" مع حركة (${targetMarkName})`,
+        hint: "٥ الحرف مع الحركة: اختر الشكل الصحيح للحرف حسب النطق أو الحركة",
         emoji: "",
         word: "",
-        bigChar: `حرف ${letter} • حركة ${targetMarkName}`,
-        options: shuffle([correctSyl, w1, w2]),
+        bigChar: letter,
+        options: shuffle(allForms),
         correct: correctSyl,
         questionSpoken: `اختر حرف ${letter} بحركة ${targetMarkName}`,
         targetText: correctSyl
