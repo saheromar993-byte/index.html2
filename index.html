@@ -188,7 +188,7 @@
       gap: 8px;
     }
     .char-big {
-      font-size: 3.4rem;
+      font-size: 3.3rem;
       font-weight: 900;
       color: var(--primary-dark);
       line-height: 1.2;
@@ -323,7 +323,7 @@
 
     <section class="stages-screen" id="stagesScreen">
       <div class="screen-head">
-        <h2>المهام (30 مهمة)</h2>
+        <h2>المهمات (30 مهمة)</h2>
         <span class="chip" id="unlockedChip">مفتوحة: 1 / 30</span>
       </div>
       <div class="sub-note">اعبر المستويات الـ 4 في كل مهمة حتى تفتح المهمة اللي بعدها.</div>
@@ -332,7 +332,7 @@
 
     <section class="game-screen" id="gameScreen">
       <div class="top-subbar">
-        <button class="back-btn" onclick="openStagesScreen()">← المهام</button>
+        <button class="back-btn" onclick="openStagesScreen()">← المهمات</button>
         <div class="mission-badge" id="missionBadge">مهمة 1</div>
       </div>
 
@@ -394,7 +394,7 @@
     let locked = false;
     let timeLeft = QUESTION_SECONDS;
     let current = null;
-    let questionQueues = {};
+    let randomPoolQueue = [];
     let lastItemIndex = -1;
     let nextTimer = null;
     let countdownId = null;
@@ -606,3 +606,331 @@
     function openStagesScreen() {
       renderStagesScreen();
     }
+
+    function updateLevelButtonsUI() {
+      const set = getMissionSet(currentMission);
+      document.querySelectorAll(".lvl-btn").forEach(b => {
+        const l = Number(b.dataset.lvl);
+        b.classList.toggle("active", l === level);
+        b.classList.toggle("passed", set.has(l));
+      });
+    }
+
+    function startMission(m) {
+      currentMission = m;
+      const set = getMissionSet(m);
+      const firstUnpassed = [1, 2, 3, 4].find(l => !set.has(l));
+      level = firstUnpassed || 1;
+
+      const stagesEl = document.getElementById("stagesScreen");
+      const gameEl = document.getElementById("gameScreen");
+      stagesEl.classList.add("hidden");
+      stagesEl.style.display = "none";
+      gameEl.classList.add("active");
+      gameEl.style.display = "block";
+
+      document.getElementById("missionBadge").textContent = `مهمة ${currentMission} من ${TOTAL_MISSIONS}`;
+      updateLevelButtonsUI();
+      loadQuestion(true);
+    }
+
+    function selectLevel(lvl) {
+      unlockAudioOnFirstTouch();
+      clearTimeout(nextTimer);
+      clearInterval(countdownId);
+      level = lvl;
+      updateLevelButtonsUI();
+      loadQuestion(true);
+    }
+
+    function updateStats() {
+      const passedCount = getMissionSet(currentMission).size;
+      document.getElementById("scoreChip").textContent = `⭐ ${score}`;
+      document.getElementById("starsChip").textContent = `🏅 ${stars}`;
+      document.getElementById("progBar").style.width = `${(passedCount / 4) * 100}%`;
+    }
+
+    function updateTimerUI() {
+      const chip = document.getElementById("timerChip");
+      chip.textContent = `⏱️ ${timeLeft}`;
+      chip.classList.toggle("urgent", timeLeft <= 5);
+    }
+
+    function startTimer() {
+      clearInterval(countdownId);
+      timeLeft = QUESTION_SECONDS;
+      updateTimerUI();
+      countdownId = setInterval(() => {
+        if (locked) return;
+        timeLeft -= 1;
+        updateTimerUI();
+        if (timeLeft <= 5 && timeLeft > 0) {
+          playSoftTone(440, 80, 0.14);
+        }
+        if (timeLeft <= 0) {
+          clearInterval(countdownId);
+          onTimeUp();
+        }
+      }, 1000);
+    }
+
+    function onTimeUp() {
+      if (locked || !current) return;
+      locked = true;
+      playMelody([[330, 150], [262, 200]], 0.22);
+      setAlert("warn", `⏰ انتهى الوقت (15 ثانية)! الجواب الصحيح: "${current.correct}"`);
+      document.getElementById("msg").style.color = "var(--warn)";
+      document.getElementById("msg").textContent = "سؤال جديد...";
+      nextTimer = setTimeout(() => loadQuestion(true), 1900);
+    }
+
+    function shuffle(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    // يجمع كل الحروف ويعيد خلطها عشوائياً بدون تكرار فوري
+    function pickRandomAllLettersIndex() {
+      if (randomPoolQueue.length === 0) {
+        const all = DATA.map((_, i) => i).filter(i => i !== lastItemIndex);
+        randomPoolQueue = shuffle(all);
+      }
+      const idx = randomPoolQueue.shift();
+      lastItemIndex = idx;
+      return idx;
+    }
+
+    function makeBlankWord(word, targetLetter) {
+      const chars = [...word];
+      let replaced = false;
+      for (let i = 0; i < chars.length; i++) {
+        if (chars[i] === targetLetter && !replaced) {
+          chars[i] = "_";
+          replaced = true;
+        }
+      }
+      if (!replaced && chars.length > 0) {
+        chars[0] = "_";
+      }
+      return chars.join(" ");
+    }
+
+    function buildQuestion(lvl) {
+      const idx = pickRandomAllLettersIndex();
+      const [letter, word, emoji] = DATA[idx];
+      const pool = DATA.filter(d => d[0] !== letter);
+      const wrongs = shuffle(pool).slice(0, 2).map(d => d[0]);
+
+      // سؤال الحرف مع الحركة عشوائي ضمن الأسئلة
+      if (Math.random() < 0.34) {
+        const [mark, markName] = HARAKAT[Math.floor(Math.random() * HARAKAT.length)];
+        const correctSyl = letter + mark;
+        const wrongSyls = wrongs.map(w => w + mark);
+        return {
+          icon: "🔤✨",
+          hint: `سؤال الحرف مع الحركة: اختر الحرف بحركة (${markName})`,
+          emoji: "",
+          word: "",
+          bigChar: `حركة: ${markName}`,
+          options: shuffle([correctSyl, ...wrongSyls]),
+          correct: correctSyl,
+          questionSpoken: `اختر الحرف بحركة ${markName}`,
+          targetText: correctSyl
+        };
+      }
+
+      if (lvl === 1) {
+        return {
+          icon: "❓🔤",
+          hint: "المستوى ١ (سهل): بأي حرف تبدأ الكلمة؟",
+          emoji,
+          word,
+          bigChar: "",
+          options: shuffle([letter, ...wrongs]),
+          correct: letter,
+          questionSpoken: `بأي حرف تبدأ كلمة ${word}؟`,
+          targetText: word
+        };
+      }
+
+      if (lvl === 2) {
+        return {
+          icon: "❓🖼️",
+          hint: "المستوى ٢: خمن الحرف من الصورة بدون كلمة",
+          emoji,
+          word: "",
+          bigChar: "",
+          options: shuffle([letter, ...wrongs]),
+          correct: letter,
+          questionSpoken: "بأي حرف تبدأ هذه الصورة؟",
+          targetText: word
+        };
+      }
+
+      if (lvl === 3) {
+        const cands = [...word].filter(c => ALL_LETTERS.has(c) && word.split(c).length - 1 === 1);
+        const c = cands.length ? cands[0] : letter;
+        const posIdx = word.indexOf(c);
+        const correct = posIdx === 0 ? POSITIONS[0] : (posIdx === word.length - 1 ? POSITIONS[2] : POSITIONS[1]);
+        return {
+          icon: `📍 ${c}`,
+          hint: `المستوى ٣: أين موقع حرف "${c}" في الكلمة؟`,
+          emoji,
+          word,
+          bigChar: "",
+          options: [...POSITIONS],
+          correct,
+          questionSpoken: `أين موقع الحرف في كلمة ${word}؟`,
+          targetText: word
+        };
+      }
+
+      const blankDisplay = makeBlankWord(word, letter);
+      return {
+        icon: "🧩",
+        hint: "المستوى ٤ (الأصعب): أكمل الفراغ بحرف واحد",
+        emoji,
+        word: blankDisplay,
+        bigChar: "",
+        options: shuffle([letter, ...wrongs]),
+        correct: letter,
+        questionSpoken: "أكمل الفراغ بالحرف الناقص",
+        targetText: word
+      };
+    }
+
+    function loadQuestion(autoSpeak = false) {
+      clearTimeout(nextTimer);
+      clearInterval(countdownId);
+      locked = false;
+      setAlert("", "");
+      document.getElementById("mainCard").classList.remove("win-card");
+      document.getElementById("msg").textContent = "";
+      updateStats();
+
+      current = buildQuestion(level);
+      document.getElementById("qBtn").textContent = current.icon;
+      document.getElementById("hint").textContent = current.hint;
+
+      const stage = document.getElementById("stage");
+      stage.innerHTML = "";
+
+      if (current.bigChar) {
+        const d = document.createElement("div");
+        d.className = "char-big";
+        d.textContent = current.bigChar;
+        stage.appendChild(d);
+      } else {
+        const em = document.createElement("div");
+        em.className = "emoji-big";
+        em.textContent = current.emoji;
+        stage.appendChild(em);
+
+        if (current.word) {
+          const w = document.createElement("div");
+          w.className = "word-txt";
+          w.textContent = current.word;
+          stage.appendChild(w);
+        }
+      }
+
+      const optsDiv = document.getElementById("options");
+      optsDiv.innerHTML = "";
+      const isTextOpt = (level === 3);
+      current.options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.className = "opt-btn" + (isTextOpt ? " text-opt" : "");
+        btn.textContent = opt;
+        btn.onclick = () => onAnswer(opt, btn);
+        optsDiv.appendChild(btn);
+      });
+
+      startTimer();
+      if (autoSpeak) {
+        setTimeout(() => speakArabic(current.questionSpoken), 180);
+      }
+    }
+
+    function showCorrectCelebration() {
+      document.getElementById("mainCard").classList.add("win-card");
+      const stage = document.getElementById("stage");
+      stage.innerHTML = "";
+
+      const clapRow = document.createElement("div");
+      clapRow.className = "clap-banner";
+      clapRow.textContent = "👏✨👏";
+      stage.appendChild(clapRow);
+
+      if (current && current.emoji) {
+        const em = document.createElement("div");
+        em.className = "emoji-big win-bounce";
+        em.textContent = current.emoji;
+        stage.appendChild(em);
+      }
+
+      const w = document.createElement("div");
+      w.className = "word-txt win-word";
+      w.textContent = current.targetText;
+      stage.appendChild(w);
+    }
+
+    function onAnswer(choice, btn) {
+      if (locked || !current) return;
+      unlockAudioOnFirstTouch();
+
+      const msgEl = document.getElementById("msg");
+      if (choice === current.correct) {
+        locked = true;
+        clearInterval(countdownId);
+        score += 1;
+        btn.classList.add("ok");
+
+        showCorrectCelebration();
+        playGentleClap();
+        setTimeout(() => speakArabic(current.targetText), 650);
+
+        const set = getMissionSet(currentMission);
+        set.add(level);
+        updateLevelButtonsUI();
+        updateStats();
+
+        const pText = PRAISE[Math.floor(Math.random() * PRAISE.length)];
+        msgEl.style.color = "#15803D";
+        msgEl.textContent = `${pText} 👏🌟`;
+        setAlert("ok", `🎉 إجابة صحيحة! أحسنت يا بطل — "${current.targetText}"`);
+
+        if (set.size >= 4) {
+          stars += 1;
+          updateStats();
+          if (currentMission < TOTAL_MISSIONS && maxUnlockedMission < currentMission + 1) {
+            maxUnlockedMission = currentMission + 1;
+          }
+          setAlert("ok", `🏆 كفو! عبرت كل مستويات المهمة ${currentMission} وانفتحت المهمة ${Math.min(TOTAL_MISSIONS, currentMission + 1)}`);
+          nextTimer = setTimeout(() => {
+            renderStagesScreen();
+          }, 2400);
+        } else {
+          const nextLvl = [1, 2, 3, 4].find(l => !set.has(l)) || (level < 4 ? level + 1 : 1);
+          nextTimer = setTimeout(() => {
+            level = nextLvl;
+            updateLevelButtonsUI();
+            loadQuestion(true);
+          }, 2200);
+        }
+      } else {
+        btn.classList.add("bad");
+        setAlert("bad", `⚠️ تحذير: اختيارك "${choice}" غير صحيح! حاول مرة ثانية`);
+        msgEl.style.color = "var(--bad)";
+        msgEl.textContent = "إجابة خاطئة ❌";
+        playMelody([[311, 150], [233, 200]], 0.24);
+      }
+    }
+
+    renderStagesScreen();
+  </script>
+</body>
+</html>
